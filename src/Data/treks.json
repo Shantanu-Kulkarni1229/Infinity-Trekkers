@@ -1,0 +1,652 @@
+[
+  {
+    "id": 1,
+    "name": "Kalsubai Night Trek",
+    "image": "https://storage.googleapis.com/goa-app-12a91.appspot.com/2024-08-08T07%3A40%3A55.679Z42.webp?GoogleAccessId=firebase-adminsdk-zeqcj%40goa-app-12a91.iam.gserviceaccount.com&Expires=16447017600&Signature=fmFfMt7%2F587jooq6PiuNkNAzVBnY%2FLui%2Bh4yLre914IJ1L7kEkoJJm2bhiODR7O45uF33lmsZ8AnQAmnKE537v8iXW7LwPRRtz6Azr83Uh%2BdWy3CQ6dZHYcOnAOjOEjmvCrI6OvfdYp8hpeW0PyH8Afya7kcO1aHPV1eYxcajrA%2BXhFdpx5%2BpnzfrLT4a3ECjApJ%2F8JGCUvvALn46V6dMq%2Fv4WxPztBLIn0jUOEX2nKxZZhjDKhzpEe%2B322miIgVC3Y17U3sjszSrm80xDV%2BIZBFODgD8efn6HGoD1tRcaRNwUS%2BFxYMYSVr%2BQyW509wS3F2RfAR1JaJRszEpujc4A%3D%3D",
+    "description": "Join us on a thrilling night trek to the highest peak in Maharashtra under the stars.",
+    "duration": "12 hours",
+    "fees": 1200,
+    "location": "Igatpuri, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Kalsubai+Peak/@19.601944,73.708611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.601944!4d73.708611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
+    "difficulty": "Moderate",
+    "elevation": "1646m",
+    "groupSize": "15-25 people",
+    "nextDate": "2025-07-15",
+    "rating": 4.8,
+    "reviews": 124,
+    "highlights": ["Highest peak in Maharashtra", "Stunning sunrise views", "Night camping"],
+    "temperature": "15-22°C",
+    "bestTime": "Oct-Mar",
+    "included": ["Guide", "Breakfast", "Safety equipment"],
+    "badge": "Popular",
+    "startTime": "11:00 PM",
+    "endTime": "11:00 AM",
+    "meetingPoint": "Bari Village Base",
+    "trekDistance": "6 km",
+    "ageLimit": "16-60 years",
+    "fitnessLevel": "Good physical fitness required",
+    "thingsToCarry": [
+      "Trekking shoes",
+      "Headlamp/torch",
+      "Water bottle (2L)",
+      "Warm clothes",
+      "Rain gear",
+      "Personal medicines"
+    ],
+    "itinerary": [
+      "11:00 PM - Assembly at base village",
+      "11:30 PM - Trek begins",
+      "4:30 AM - Reach summit",
+      "6:00 AM - Sunrise viewing",
+      "7:00 AM - Breakfast",
+      "8:00 AM - Descent begins",
+      "11:00 AM - Return to base"
+    ],
+    "bookingLink": "https://forms.gle/vqbxY2QHg4ZbaLQx7",
+    "trekHistory": {
+      "totalTrips": 45,
+      "firstTrek": "2019-10-15",
+      "lastTrek": "2025-06-10",
+      "totalTrekkers": 892,
+      "successRate": "98%",
+      "weatherCancellations": 3,
+      "highlights": [
+        "First successful night trek organized in 2019",
+        "Witnessed 3 meteor showers during treks",
+        "Rescued 2 trekkers in emergency situations",
+        "Organized special full moon treks"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1250,
+      "categories": [
+        {
+          "name": "Summit Sunrise",
+          "photoCount": 350,
+          "thumbnail": "/albums/kalsubai/sunrise.jpg"
+        },
+        {
+          "name": "Night Sky",
+          "photoCount": 280,
+          "thumbnail": "/albums/kalsubai/night.jpg"
+        },
+        {
+          "name": "Trekker Moments",
+          "photoCount": 420,
+          "thumbnail": "/albums/kalsubai/trekkers.jpg"
+        },
+        {
+          "name": "Trail Views",
+          "photoCount": 200,
+          "thumbnail": "/albums/kalsubai/trail.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/kalsubai/featured1.jpg",
+        "/albums/kalsubai/featured2.jpg",
+        "/albums/kalsubai/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "name": "Harishchandragad",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGYidcFfXabXv6QOEX7iIk32F3oKAesLUz9w&s",
+    "description": "An adventurous trek through one of the toughest routes leading to majestic views.",
+    "duration": "2 days",
+    "fees": 2500,
+    "location": "Malshej Ghat, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Harishchandragad/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F1218v2w0?entry=ttu",
+    "difficulty": "Challenging",
+    "elevation": "1424m",
+    "groupSize": "10-20 people",
+    "nextDate": "2025-07-20",
+    "rating": 4.9,
+    "reviews": 89,
+    "highlights": ["Ancient caves", "Kokankada cliff", "Taramati peak"],
+    "temperature": "12-20°C",
+    "bestTime": "Nov-Feb",
+    "included": ["Guide", "Meals", "Camping gear", "Safety equipment"],
+    "badge": "Adventure",
+    "startTime": "6:00 AM",
+    "endTime": "6:00 PM (Next day)",
+    "meetingPoint": "Khireshwar Village",
+    "trekDistance": "14 km",
+    "ageLimit": "18-55 years",
+    "fitnessLevel": "Excellent physical fitness required",
+    "thingsToCarry": [
+      "Trekking shoes with good grip",
+      "Headlamp/torch",
+      "Water bottle (3L)",
+      "Warm sleeping bag",
+      "Rain gear",
+      "Personal medicines",
+      "Extra pair of clothes"
+    ],
+    "itinerary": [
+      "Day 1: 6:00 AM - Assembly at Khireshwar",
+      "Day 1: 7:00 AM - Trek via Nalichi Vaat begins",
+      "Day 1: 2:00 PM - Reach caves",
+      "Day 1: 4:00 PM - Explore Kokankada",
+      "Day 1: 7:00 PM - Dinner & camping",
+      "Day 2: 6:00 AM - Sunrise at Taramati",
+      "Day 2: 10:00 AM - Descent begins",
+      "Day 2: 6:00 PM - Return to base"
+    ],
+    "bookingLink": "https://forms.gle/ytfGiASW3fHNd9ZQ8",
+    "trekHistory": {
+      "totalTrips": 28,
+      "firstTrek": "2020-11-20",
+      "lastTrek": "2025-05-25",
+      "totalTrekkers": 456,
+      "successRate": "95%",
+      "weatherCancellations": 5,
+      "highlights": [
+        "Successfully completed challenging route 28 times",
+        "Discovered new cave formations in 2022",
+        "Organized special photography expeditions",
+        "Maintained 100% safety record"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 890,
+      "categories": [
+        {
+          "name": "Kokankada Cliff",
+          "photoCount": 245,
+          "thumbnail": "/albums/harishchandragad/kokankada.jpg"
+        },
+        {
+          "name": "Ancient Caves",
+          "photoCount": 180,
+          "thumbnail": "/albums/harishchandragad/caves.jpg"
+        },
+        {
+          "name": "Camping Moments",
+          "photoCount": 265,
+          "thumbnail": "/albums/harishchandragad/camping.jpg"
+        },
+        {
+          "name": "Sunrise Views",
+          "photoCount": 200,
+          "thumbnail": "/albums/harishchandragad/sunrise.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/harishchandragad/featured1.jpg",
+        "/albums/harishchandragad/featured2.jpg",
+        "/albums/harishchandragad/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "name": "Harihar Fort Trek",
+    "image": "https://d3sftlgbtusmnv.cloudfront.net/blog/wp-content/uploads/2024/11/Harihar-Fort-Trekking-Cover-Image-840x425.jpg",
+    "description": "Conquer the iconic vertical staircase of Harihar Fort and experience panoramic views from the top of the Western Ghats.",
+    "duration": "1 day",
+    "fees": 900,
+    "location": "Nashik, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Harihar+Fort/@20.039722,73.745,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d20.039722!4d73.745!16s%2Fg%2F1218v2w0?entry=ttu",
+    "difficulty": "Moderate",
+    "elevation": "1120m",
+    "groupSize": "15-25 people",
+    "nextDate": "2025-07-13",
+    "rating": 4.8,
+    "reviews": 178,
+    "highlights": ["Iconic rock-cut staircase", "360° scenic views", "Historic fort ruins"],
+    "temperature": "16-22°C",
+    "bestTime": "Jun-Feb",
+    "included": ["Guide", "Breakfast", "Lunch", "First Aid"],
+    "badge": "Adventurous",
+    "startTime": "5:30 AM",
+    "endTime": "7:00 PM",
+    "meetingPoint": "Kasara Railway Station",
+    "trekDistance": "6.5 km",
+    "ageLimit": "14-60 years",
+    "fitnessLevel": "Moderate fitness required",
+    "thingsToCarry": [
+      "Trekking shoes with good grip",
+      "Raincoat/Poncho (monsoon)",
+      "2L water bottle",
+      "Energy snacks",
+      "Cap/sunglasses",
+      "Personal medication"
+    ],
+    "itinerary": [
+      "5:30 AM - Meet at Kasara station",
+      "6:00 AM - Travel to Nirgudpada (base village)",
+      "8:30 AM - Breakfast and introduction",
+      "9:00 AM - Trek begins",
+      "11:30 AM - Reach summit and explore fort",
+      "12:30 PM - Enjoy packed lunch at the top",
+      "1:30 PM - Start descending",
+      "3:30 PM - Reach base and freshen up",
+      "4:00 PM - Return journey to Kasara",
+      "7:00 PM - Trip concludes at Kasara station"
+    ],
+    "bookingLink": "https://forms.gle/FBWkJg97SkVXNuRx8",
+    "trekHistory": {
+      "totalTrips": 74,
+      "firstTrek": "2018-11-18",
+      "lastTrek": "2025-06-22",
+      "totalTrekkers": 2180,
+      "successRate": "97%",
+      "weatherCancellations": 3,
+      "highlights": [
+        "Safely conducted 70+ treks",
+        "No major accidents or injuries",
+        "Famous for monsoon adventure seekers",
+        "Educated trekkers about Maratha history"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1620,
+      "categories": [
+        {
+          "name": "Stairway to Heaven",
+          "photoCount": 600,
+          "thumbnail": "/albums/harihar/stairs.jpg"
+        },
+        {
+          "name": "Summit Views",
+          "photoCount": 400,
+          "thumbnail": "/albums/harihar/summit.jpg"
+        },
+        {
+          "name": "Historic Fort Walls",
+          "photoCount": 320,
+          "thumbnail": "/albums/harihar/walls.jpg"
+        },
+        {
+          "name": "Group Moments",
+          "photoCount": 300,
+          "thumbnail": "/albums/harihar/group.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/harihar/featured1.jpg",
+        "/albums/harihar/featured2.jpg",
+        "/albums/harihar/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 4,
+    "name": "Aadrai Jungle Trek",
+    "image": "https://dq1q7qkthxkc0.cloudfront.net/UpdatedMedia/12b70dce-131a-4a08-acf7-47c64c1dd52b.webp",
+    "description": "Explore the dense and misty Aadrai jungle with hidden waterfalls, river streams, and thrilling forest trails.",
+    "duration": "1 day",
+    "fees": 1000,
+    "location": "Malshej Ghat, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Aadrai+Jungle+Trek/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
+    "difficulty": "Easy to Moderate",
+    "elevation": "760m",
+    "groupSize": "20-35 people",
+    "nextDate": "2025-07-14",
+    "rating": 4.6,
+    "reviews": 192,
+    "highlights": ["Hidden waterfalls", "River crossings", "Thick jungle trails"],
+    "temperature": "17-24°C",
+    "bestTime": "Jun-Sep",
+    "included": ["Guide", "Breakfast", "Lunch", "First Aid"],
+    "badge": "Monsoon Special",
+    "startTime": "5:00 AM",
+    "endTime": "9:00 PM",
+    "meetingPoint": "Kalyan Railway Station",
+    "trekDistance": "14 km",
+    "ageLimit": "12-55 years",
+    "fitnessLevel": "Basic to Moderate fitness required",
+    "thingsToCarry": [
+      "Good grip trekking shoes",
+      "Raincoat/Poncho",
+      "2L water bottle",
+      "Energy bars/snacks",
+      "Extra pair of clothes",
+      "Personal medication",
+      "Small backpack"
+    ],
+    "itinerary": [
+      "5:00 AM - Meet at Kalyan station",
+      "5:15 AM - Travel to Khireshwar village by private vehicle",
+      "8:00 AM - Freshen up and breakfast",
+      "8:30 AM - Trek begins through dense jungle",
+      "12:00 PM - Reach Aadrai waterfall and explore surroundings",
+      "1:00 PM - Lunch break in the forest",
+      "2:00 PM - Start descending",
+      "5:00 PM - Reach base village",
+      "5:30 PM - Tea & snacks",
+      "6:00 PM - Return journey to Kalyan",
+      "9:00 PM - Trip concludes"
+    ],
+    "bookingLink": "https://forms.gle/Fs1QAgy3DmBwdDSDA",
+    "trekHistory": {
+      "totalTrips": 65,
+      "firstTrek": "2019-07-20",
+      "lastTrek": "2025-06-23",
+      "totalTrekkers": 1850,
+      "successRate": "98%",
+      "weatherCancellations": 4,
+      "highlights": [
+        "Discovered hidden trails in the jungle",
+        "Ensured safe travel during heavy monsoons",
+        "Documented unique flora and fauna",
+        "Promoted eco-friendly jungle treks"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1280,
+      "categories": [
+        {
+          "name": "Waterfalls & Streams",
+          "photoCount": 450,
+          "thumbnail": "/albums/aadrai/waterfalls.jpg"
+        },
+        {
+          "name": "Jungle Trails",
+          "photoCount": 350,
+          "thumbnail": "/albums/aadrai/trails.jpg"
+        },
+        {
+          "name": "Misty Views",
+          "photoCount": 280,
+          "thumbnail": "/albums/aadrai/mist.jpg"
+        },
+        {
+          "name": "Group Trek Memories",
+          "photoCount": 200,
+          "thumbnail": "/albums/aadrai/group.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/aadrai/featured1.jpg",
+        "/albums/aadrai/featured2.jpg",
+        "/albums/aadrai/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 6,
+    "name": "Raigad Fort Trek",
+    "image": "https://res.cloudinary.com/dyiffrkzh/image/upload/c_fill,f_auto,fl_progressive.strip_profile,g_center,h_400,q_auto,w_700/v1724648793/banbanjara/gxz2kw5dt7i8cb4nakse.webp",
+    "description": "Walk through the footsteps of Chhatrapati Shivaji Maharaj at the historic Raigad Fort, surrounded by majestic views and Maratha legacy.",
+    "duration": "1 day",
+    "fees": 950,
+    "location": "Raigad District, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Raigad+Fort/@18.235556,73.446389,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d18.235556!4d73.446389!16s%2Fg%2F1218v2w0?entry=ttu",
+    "difficulty": "Moderate",
+    "elevation": "1350m",
+    "groupSize": "20-40 people",
+    "nextDate": "2025-07-20",
+    "rating": 4.9,
+    "reviews": 203,
+    "highlights": ["Historical fort", "Statue of Shivaji Maharaj", "Maha Darwaja", "Takmak Tok"],
+    "temperature": "18-26°C",
+    "bestTime": "Oct-Feb",
+    "included": ["Guide", "Breakfast", "Lunch", "Entry tickets", "Ropeway (optional)"],
+    "badge": "Heritage Trek",
+    "startTime": "4:30 AM",
+    "endTime": "9:00 PM",
+    "meetingPoint": "Panvel Railway Station",
+    "trekDistance": "7 km (staircase route) / Ropeway optional",
+    "ageLimit": "10-65 years",
+    "fitnessLevel": "Moderate fitness required",
+    "thingsToCarry": [
+      "Trekking shoes",
+      "Water bottle (2L)",
+      "Cap and sunglasses",
+      "Snacks",
+      "Camera",
+      "Personal medication",
+      "Light jacket (in winter)"
+    ],
+    "itinerary": [
+      "4:30 AM - Assemble at Panvel station",
+      "5:00 AM - Journey to Raigad base village by private bus",
+      "8:30 AM - Breakfast at base village",
+      "9:00 AM - Begin trek or take ropeway (optional)",
+      "11:30 AM - Explore fort: Raj Sabha, Takmak Tok, Holicha Mal, Shivaji Maharaj Samadhi",
+      "1:30 PM - Lunch on fort",
+      "2:30 PM - Rest and photography",
+      "3:30 PM - Descend via staircase or ropeway",
+      "5:30 PM - Tea at base village",
+      "6:00 PM - Return journey to Panvel",
+      "9:00 PM - Trip concludes"
+    ],
+    "bookingLink": "https://forms.gle/bHXRL9KquEXD6cvG8",
+    "trekHistory": {
+      "totalTrips": 84,
+      "firstTrek": "2017-08-12",
+      "lastTrek": "2025-06-15",
+      "totalTrekkers": 3050,
+      "successRate": "99%",
+      "weatherCancellations": 1,
+      "highlights": [
+        "Educated trekkers on Maratha history",
+        "Celebrated Shiv Jayanti on the fort",
+        "Promoted heritage tourism",
+        "Partnered with local historians for guided tours"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1720,
+      "categories": [
+        {
+          "name": "Fort Architecture",
+          "photoCount": 600,
+          "thumbnail": "/albums/raigad/architecture.jpg"
+        },
+        {
+          "name": "Shivaji Maharaj Statue",
+          "photoCount": 400,
+          "thumbnail": "/albums/raigad/shivaji.jpg"
+        },
+        {
+          "name": "Historic Views",
+          "photoCount": 380,
+          "thumbnail": "/albums/raigad/views.jpg"
+        },
+        {
+          "name": "Trek Memories",
+          "photoCount": 340,
+          "thumbnail": "/albums/raigad/group.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/raigad/featured1.jpg",
+        "/albums/raigad/featured2.jpg",
+        "/albums/raigad/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 7,
+    "name": "Devkund Waterfall Trek",
+    "image": "https://www.thomascook.in/blog/wp-content/uploads/2023/09/Devkund.jpg",
+    "description": "Trek through dense forest trails to reach the magical Devkund Waterfall, a hidden gem nestled in the Sahyadris with turquoise plunge pools.",
+    "duration": "1 day",
+    "fees": 850,
+    "location": "Bhira, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Devkund+Waterfall/@17.955556,73.5,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d17.955556!4d73.5!16s%2Fg%2F11b8z6c5_q?entry=ttu",
+    "difficulty": "Easy to Moderate",
+    "elevation": "600m",
+    "groupSize": "20-30 people",
+    "nextDate": "2025-07-21",
+    "rating": 4.6,
+    "reviews": 187,
+    "highlights": ["Scenic forest trails", "Natural waterfall pool", "River crossings"],
+    "temperature": "20-28°C",
+    "bestTime": "Jul-Dec",
+    "included": ["Guide", "Breakfast", "Lunch", "First Aid"],
+    "badge": "Hidden Gem",
+    "startTime": "5:00 AM",
+    "endTime": "9:00 PM",
+    "meetingPoint": "Karjat Railway Station",
+    "trekDistance": "6.5 km (one way)",
+    "ageLimit": "10-55 years",
+    "fitnessLevel": "Basic fitness required",
+    "thingsToCarry": [
+      "Trekking shoes with good grip",
+      "2L water bottle",
+      "Raincoat (monsoon)",
+      "Quick-dry clothes",
+      "Snacks/Energy bars",
+      "Personal medication",
+      "Waterproof bag cover"
+    ],
+    "itinerary": [
+      "5:00 AM - Assemble at Karjat station",
+      "5:30 AM - Drive to Bhira village (base)",
+      "8:00 AM - Freshen up and breakfast",
+      "8:30 AM - Trek briefing and start",
+      "11:00 AM - Reach Devkund waterfall and relax",
+      "12:00 PM - Group photos and waterfall time (non-swimming zone)",
+      "1:00 PM - Lunch near waterfall area",
+      "2:00 PM - Start descending",
+      "4:30 PM - Reach base village",
+      "5:00 PM - Tea and snacks",
+      "5:30 PM - Return journey to Karjat",
+      "9:00 PM - Trip concludes"
+    ],
+    "bookingLink": "https://forms.gle/bwoDrk5gh3TGmYsw6",
+    "trekHistory": {
+      "totalTrips": 58,
+      "firstTrek": "2018-07-10",
+      "lastTrek": "2025-06-24",
+      "totalTrekkers": 1600,
+      "successRate": "96%",
+      "weatherCancellations": 5,
+      "highlights": [
+        "Maintained strict safety measures during water flow",
+        "Promoted responsible eco-tourism",
+        "Helped clean trails and waterfall zone",
+        "Worked with locals for sustainable tourism"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1390,
+      "categories": [
+        {
+          "name": "Waterfall Beauty",
+          "photoCount": 540,
+          "thumbnail": "/albums/devkund/waterfall.jpg"
+        },
+        {
+          "name": "Forest & River Trails",
+          "photoCount": 380,
+          "thumbnail": "/albums/devkund/trails.jpg"
+        },
+        {
+          "name": "Group Trek Memories",
+          "photoCount": 290,
+          "thumbnail": "/albums/devkund/group.jpg"
+        },
+        {
+          "name": "Nature Closeups",
+          "photoCount": 180,
+          "thumbnail": "/albums/devkund/nature.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/devkund/featured1.jpg",
+        "/albums/devkund/featured2.jpg",
+        "/albums/devkund/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 8,
+    "name": "Kalu Waterfall Trek",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTXIxTftqH2bmUSpuGWLmRqTk3L9M8ctdhC8A&s",
+    "description": "Trek through lush green valleys and misty plateaus to witness the majestic Kalu Waterfall – the highest waterfall in the Malshej region.",
+    "duration": "1 day",
+    "fees": 950,
+    "location": "Malshej Ghat, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Kalu+Waterfall/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
+    "difficulty": "Moderate",
+    "elevation": "1200m (approx.)",
+    "groupSize": "20-30 people",
+    "nextDate": "2025-07-22",
+    "rating": 4.7,
+    "reviews": 165,
+    "highlights": ["Highest waterfall in Malshej", "River streams", "Dense monsoon forest"],
+    "temperature": "18-24°C",
+    "bestTime": "Jun-Sep",
+    "included": ["Guide", "Breakfast", "Lunch", "First Aid"],
+    "badge": "Monsoon Marvel",
+    "startTime": "4:30 AM",
+    "endTime": "9:00 PM",
+    "meetingPoint": "Kalyan Railway Station",
+    "trekDistance": "12 km (round trip)",
+    "ageLimit": "14-60 years",
+    "fitnessLevel": "Moderate fitness required",
+    "thingsToCarry": [
+      "Waterproof trekking shoes",
+      "Raincoat/Poncho",
+      "Water bottle (2L)",
+      "Dry snacks",
+      "Extra pair of clothes",
+      "Trekking pole (optional)",
+      "Camera",
+      "Personal medication"
+    ],
+    "itinerary": [
+      "4:30 AM - Assemble at Kalyan station",
+      "5:00 AM - Drive to base village via Malshej",
+      "8:00 AM - Freshen up and breakfast",
+      "8:30 AM - Trek begins through forest and plateaus",
+      "11:30 AM - Reach Kalu waterfall viewpoint",
+      "12:00 PM - Relax, photos and enjoy the waterfall mist",
+      "1:00 PM - Lunch break near the stream",
+      "2:00 PM - Begin return trek",
+      "4:30 PM - Reach base and tea/snacks",
+      "5:00 PM - Return journey to Kalyan",
+      "9:00 PM - Trip concludes"
+    ],
+    "bookingLink": "https://forms.gle/Wt2zxtndP2yYGhvA8",
+    "trekHistory": {
+      "totalTrips": 40,
+      "firstTrek": "2019-06-25",
+      "lastTrek": "2025-06-25",
+      "totalTrekkers": 980,
+      "successRate": "95%",
+      "weatherCancellations": 3,
+      "highlights": [
+        "Guided monsoon treks with high safety standards",
+        "Popular among waterfall chasers",
+        "Conducted eco-awareness sessions",
+        "Helped map alternate safe trails"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1210,
+      "categories": [
+        {
+          "name": "Waterfall Views",
+          "photoCount": 450,
+          "thumbnail": "/albums/kalu/waterfall.jpg"
+        },
+        {
+          "name": "Trekking Path",
+          "photoCount": 300,
+          "thumbnail": "/albums/kalu/trail.jpg"
+        },
+        {
+          "name": "Monsoon Magic",
+          "photoCount": 260,
+          "thumbnail": "/albums/kalu/monsoon.jpg"
+        },
+        {
+          "name": "Trek Groups",
+          "photoCount": 200,
+          "thumbnail": "/albums/kalu/group.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/kalu/featured1.jpg",
+        "/albums/kalu/featured2.jpg",
+        "/albums/kalu/featured3.jpg"
+      ]
+    }
+  }
+]
