@@ -12,7 +12,7 @@ const NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/" },
   { name: "Upcoming Treks", href: "/upcoming-trek" },
   { name: "Gallery", href: "/gallery" },
-  { name: "Contact", href: "/contact" }
+  // { name: "Contact", href: "/contact" }
 ];
 
 const Navbar: React.FC = () => {
