@@ -6,8 +6,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./Components/Home/Home";
 import UpComingTrekPage from "./Components/UpComingTreks/UpComingTrekPage";
 import Gallery from "./Components/Gallery/Gallery";
-import AboutUs from "./Components/AboutUs/AboutUs";
-import ContactUs from "./Components/ContactUs/ContactUs";
+// import AboutUs from "./Components/AboutUs/AboutUs";
+// import ContactUs from "./Components/ContactUs/ContactUs";
 import Navbar from "./Components/Home/Header/Navbar";
 import Footer from "./Components/Home/Footer/Footer";
 
@@ -22,8 +22,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/upcoming-trek" element={<UpComingTrekPage />} />
         <Route path="/gallery" element={<Gallery />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/contact" element={<ContactUs />} />
+        {/* <Route path="/about" element={<AboutUs />} />
+        <Route path="/contact" element={<ContactUs />} /> */}
         
       </Routes>
       <Footer />

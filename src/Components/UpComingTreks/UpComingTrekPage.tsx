@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 // Define TypeScript interfaces
-interface Trek {
+export interface Trek {
   id: number;
   name: string;
   location: string;

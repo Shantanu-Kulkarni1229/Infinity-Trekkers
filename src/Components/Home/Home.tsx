@@ -1,10 +1,7 @@
 // src/App.tsx
-import React from "react";
-import Navbar from "./Header/Navbar";
 import HeroSection from "./Main-Section/Hero";
 import UpcomingTreks from "./Main-Section/UpComingTreks";
 import Testimonials from "./Main-Section/Testomonial";
-import Footer from "./Footer/Footer";
 
 function Home() {
   return (

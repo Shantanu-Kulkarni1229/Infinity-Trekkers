@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, X, Heart, Calendar, MapPin, ArrowLeft, ArrowRight, Download, Share2, Eye, Grid, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion'; // Added missing imports
 import galleryData from '../../Data/Gallery.json';

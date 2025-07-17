@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { ChevronDown, Mountain, Users, Award } from "lucide-react";
@@ -43,14 +43,16 @@ const HeroSection = () => {
           onSlideChange={(swiper) => setCurrentSlide(swiper.realIndex)}
           onSwiper={(swiper) => swiper.autoplay.start()}
         >
-          {images.map((src, index) => (
+          {images.map((_src, index) => (
             <SwiperSlide key={index} className="w-full h-full">
               <div className="relative w-full h-full">
-                <img
+                {/* <img
                   src={src}
                   alt={`Adventure ${index + 1}`}
                   className="w-full h-full object-cover object-center min-h-screen min-w-full"
-                />
+                /> */}
+                <video src="https://cdn.pixabay.com/video/2024/07/03/219300_large.mp4" autoPlay muted loop={true}
+                  className="w-full h-full object-cover object-center min-h-screen min-w-full"></video>
               </div>
             </SwiperSlide>
           ))}

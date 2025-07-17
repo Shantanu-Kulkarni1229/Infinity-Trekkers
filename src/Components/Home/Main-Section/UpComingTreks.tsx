@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   MapPin,
   Clock,
@@ -10,10 +10,7 @@ import {
   Heart,
   Thermometer,
   Compass,
-  Camera,
-  BookOpen,
-  ArrowRight
-} from 'lucide-react';
+  Camera} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import enhancedTrekData from '../../../Data/treks.json';
@@ -39,15 +36,7 @@ const UpcomingTreks = () => {
     setSelectedTrek(prev => prev === trekId ? null : trekId as unknown as null);
   };
 
-  const handleViewAllTreks = () => {
-    // This will be connected to show all treks page
-    console.log('Navigate to all treks page');
-  };
 
-  const handleTrekHistory = (trekId: string) => {
-    // This will be connected to trek history page
-    console.log(`Navigate to trek ${trekId} history page`);
-  };
 
   const handleTrekAlbum = (trekId: string) => {
     // This will be connected to trek photo album
