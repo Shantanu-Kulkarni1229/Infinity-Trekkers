@@ -255,7 +255,7 @@ const Testimonials: React.FC = () => {
                         }}
                     >
                         {/* Hide scrollbar for Chrome/Safari */}
-                        <style jsx>{`
+                        <style>{`
                             div::-webkit-scrollbar {
                                 display: none;
                             }

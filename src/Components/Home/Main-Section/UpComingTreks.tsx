@@ -22,10 +22,10 @@ const UpcomingTreks = () => {
   const [likedTreks, setLikedTreks] = useState(new Set());
   const [selectedTrek, setSelectedTrek] = useState(null);
 
-  // Only show first 4 treks
+  // Only show first 4 treks 
   const displayedTreks = enhancedTrekData.slice(0, 4);
 
-  const toggleLike = (trekId) => {
+  const toggleLike = (trekId : string) => {
     const newLiked = new Set(likedTreks);
     if (newLiked.has(trekId)) {
       newLiked.delete(trekId);
@@ -35,8 +35,8 @@ const UpcomingTreks = () => {
     setLikedTreks(newLiked);
   };
 
-  const toggleDetails = (trekId) => {
-    setSelectedTrek(selectedTrek === trekId ? null : trekId);
+  const toggleDetails = (trekId: unknown) => {
+    setSelectedTrek(prev => prev === trekId ? null : trekId as unknown as null);
   };
 
   const handleViewAllTreks = () => {
@@ -44,17 +44,17 @@ const UpcomingTreks = () => {
     console.log('Navigate to all treks page');
   };
 
-  const handleTrekHistory = (trekId) => {
+  const handleTrekHistory = (trekId: string) => {
     // This will be connected to trek history page
     console.log(`Navigate to trek ${trekId} history page`);
   };
 
-  const handleTrekAlbum = (trekId) => {
+  const handleTrekAlbum = (trekId: string) => {
     // This will be connected to trek photo album
     console.log(`Navigate to trek ${trekId} photo album`);
   };
 
-  const getDifficultyColor = (difficulty) => {
+  const getDifficultyColor = (difficulty:string) => {
     switch (difficulty) {
       case 'Easy': return 'bg-blue-100 text-blue-800';
       case 'Moderate': return 'bg-yellow-100 text-yellow-800';
@@ -63,7 +63,7 @@ const UpcomingTreks = () => {
     }
   };
 
-  const getBadgeColor = (badge) => {
+  const getBadgeColor = (badge : string) => {
     switch (badge) {
       case 'Popular': return 'bg-gradient-to-r from-purple-500 to-pink-500';
       case 'Adventure': return 'bg-gradient-to-r from-red-500 to-orange-500';
@@ -101,7 +101,7 @@ const UpcomingTreks = () => {
             {/* Like Button - Only show when details are not open */}
             {selectedTrek !== trek.id && (
               <button
-                onClick={() => toggleLike(trek.id)}
+                onClick={() => toggleLike(trek.id.toString())}
                 className="absolute top-4 right-4 z-10 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-all duration-300"
               >
                 <Heart
@@ -185,7 +185,7 @@ const UpcomingTreks = () => {
                     <Link
                       to='/gallery'
                       onClick={() => {
-                        handleTrekAlbum(trek.id);
+                        handleTrekAlbum(trek.id.toString());
                         window.scrollTo(0, 0); // Scrolls to top
                       }}
                       className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 transition-all duration-300"

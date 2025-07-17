@@ -3,30 +3,33 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import logo from "../../../assets/Logo/logo.png";
 
-const NAV_LINKS = [
+interface NavLink {
+  name: string;
+  href: string;
+}
+
+const NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/" },
   { name: "Upcoming Treks", href: "/upcoming-trek" },
   { name: "Gallery", href: "/gallery" },
-  // { name: "About Us", href: "/about" },
   { name: "Contact", href: "/contact" }
 ];
 
-const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [activeLink, setActiveLink] = useState("Home");
+const Navbar: React.FC = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  const [activeLink, setActiveLink] = useState<string>("Home");
   const location = useLocation();
 
-  // Throttled scroll handler
   const handleScroll = useCallback(() => {
     setIsScrolled(window.scrollY > 10);
   }, []);
 
-  // Sync active link with current route
   useEffect(() => {
-    const currentLink = NAV_LINKS.find(link => 
-      location.pathname === link.href || 
-      (link.href !== "/" && location.pathname.startsWith(link.href))
+    const currentLink = NAV_LINKS.find(
+      (link) =>
+        location.pathname === link.href ||
+        (link.href !== "/" && location.pathname.startsWith(link.href))
     );
     if (currentLink) {
       setActiveLink(currentLink.name);
@@ -34,29 +37,28 @@ const Navbar = () => {
   }, [location.pathname]);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
-  const handleLinkClick = (linkName) => {
+  const handleLinkClick = (linkName: string) => {
     setActiveLink(linkName);
     setIsMenuOpen(false);
   };
 
   return (
-    <header 
+    <header
       className={`sticky top-0 z-50 shadow-lg bg-white/95 backdrop-blur-sm ${
         isScrolled ? "py-2" : "py-3"
       } transition-[padding] duration-300 ease-in-out`}
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
-          
-          {/* Logo and Brand */}
-          <Link 
-            to="/" 
+          {/* Logo */}
+          <Link
+            to="/"
             className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0 group"
             onClick={() => handleLinkClick("Home")}
             aria-label="Home"
@@ -68,49 +70,39 @@ const Navbar = () => {
                   alt="Infinity Trekkers Logo"
                   className="h-full w-full transition-opacity duration-300"
                   onError={(e) => {
-                    e.target.style.display = 'none';
-                    const fallback = e.target.nextElementSibling;
-                    if (fallback) fallback.style.display = 'flex';
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                    const fallback = target.nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = "flex";
                   }}
                 />
-                
-                {/* Enhanced fallback logo */}
-                <div
-                  className="hidden items-center justify-center h-full w-full bg-gradient-to-br from-[#0ea5e9] to-[#0369a1] rounded-full"
-                >
+                <div className="hidden items-center justify-center h-full w-full bg-gradient-to-br from-[#0ea5e9] to-[#0369a1] rounded-full">
                   <span className="text-white font-bold">🏔️</span>
                 </div>
               </div>
-              
-              {/* Glow effect */}
               <div className="absolute inset-0 bg-[#0ea5e9] opacity-0 group-hover:opacity-20 blur-md rounded-full transition-opacity duration-300 pointer-events-none"></div>
             </div>
-            
-            {/* Brand text */}
             <div className="flex flex-col min-w-0">
-              <span className={`font-bold tracking-wide uppercase leading-tight bg-gradient-to-r from-[#0ea5e9] to-[#0369a1] bg-clip-text text-transparent ${
-                isScrolled 
-                  ? "text-sm sm:text-base" 
-                  : "text-base sm:text-lg"
-              } transition-[font-size] duration-300`}>
-                <span className="hidden xs:inline sm:hidden md:inline">Infinity Trekkers India</span>
-                <span className="xs:hidden sm:inline md:hidden">Infinity Trekkers India</span>
-                <span className="xs:hidden"></span>
+              <span
+                className={`font-bold tracking-wide uppercase leading-tight bg-gradient-to-r from-[#0ea5e9] to-[#0369a1] bg-clip-text text-transparent ${
+                  isScrolled ? "text-sm sm:text-base" : "text-base sm:text-lg"
+                } transition-[font-size] duration-300`}
+              >
+                Infinity Trekkers India
               </span>
-              
-              {/* Tagline */}
-              <span className={`text-[#053d5c] opacity-70 leading-tight ${
-                isScrolled 
-                  ? "text-xs hidden sm:block" 
-                  : "text-xs sm:text-sm hidden sm:block"
-              } transition-[font-size] duration-300`}>
-                <span className="hidden md:inline">Adventure Awaits </span>
-                <span className="md:hidden">Adventure Awaits</span>
+              <span
+                className={`text-[#053d5c] opacity-70 leading-tight ${
+                  isScrolled
+                    ? "text-xs hidden sm:block"
+                    : "text-xs sm:text-sm hidden sm:block"
+                } transition-[font-size] duration-300`}
+              >
+                Adventure Awaits
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Nav */}
           <div className="hidden lg:flex items-center space-x-1">
             {NAV_LINKS.map((link) => (
               <Link
@@ -125,18 +117,18 @@ const Navbar = () => {
                 aria-current={activeLink === link.name ? "page" : undefined}
               >
                 {link.name}
-                
-                {/* Active indicator */}
-                <span className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-[#0ea5e9] transition-all duration-300 ${
-                  activeLink === link.name 
-                    ? "w-4/5 opacity-100" 
-                    : "w-0 opacity-0 group-hover:w-4/5 group-hover:opacity-100"
-                }`}></span>
+                <span
+                  className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-[#0ea5e9] transition-all duration-300 ${
+                    activeLink === link.name
+                      ? "w-4/5 opacity-100"
+                      : "w-0 opacity-0 group-hover:w-4/5 group-hover:opacity-100"
+                  }`}
+                ></span>
               </Link>
             ))}
           </div>
 
-          {/* Tablet Navigation */}
+          {/* Tablet Nav */}
           <div className="hidden md:flex lg:hidden items-center space-x-1">
             {NAV_LINKS.slice(0, 3).map((link) => (
               <Link
@@ -151,28 +143,18 @@ const Navbar = () => {
                 aria-current={activeLink === link.name ? "page" : undefined}
               >
                 {link.name === "Upcoming Treks" ? "Treks" : link.name}
-                
-                <span className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-[#0ea5e9] transition-all duration-300 ${
-                  activeLink === link.name 
-                    ? "w-4/5 opacity-100" 
-                    : "w-0 opacity-0 group-hover:w-4/5 group-hover:opacity-100"
-                }`}></span>
+                <span
+                  className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-[#0ea5e9] transition-all duration-300 ${
+                    activeLink === link.name
+                      ? "w-4/5 opacity-100"
+                      : "w-0 opacity-0 group-hover:w-4/5 group-hover:opacity-100"
+                  }`}
+                ></span>
               </Link>
             ))}
           </div>
 
-          {/* CTA Button */}
-          {/* <div className="hidden md:flex items-center ml-4">
-            <Link 
-              to="/book-trek" 
-              className="bg-[#0ea5e9] text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#0284c7] transition-colors duration-300 hover:shadow-md active:scale-95 whitespace-nowrap"
-              aria-label="Book a trek"
-            >
-              Book Trek
-            </Link>
-          </div> */}
-
-          {/* Mobile menu button */}
+          {/* Mobile Menu Toggle */}
           <div className="md:hidden flex-shrink-0">
             <button
               onClick={toggleMenu}
@@ -190,12 +172,12 @@ const Navbar = () => {
           </div>
         </div>
 
-        {/* Mobile Navigation Menu */}
-        <div 
+        {/* Mobile Menu */}
+        <div
           id="mobile-menu"
           className={`md:hidden transition-all duration-300 ease-out overflow-hidden bg-white ${
-            isMenuOpen 
-              ? "max-h-screen opacity-100 visible" 
+            isMenuOpen
+              ? "max-h-screen opacity-100 visible"
               : "max-h-0 opacity-0 invisible"
           }`}
           aria-hidden={!isMenuOpen}
@@ -216,17 +198,6 @@ const Navbar = () => {
                 {link.name}
               </Link>
             ))}
-            
-            {/* Mobile CTA */}
-            {/* <div className="pt-3">
-              <Link 
-                to="/book-trek"
-                className="w-full block text-center bg-[#0ea5e9] text-white px-4 py-3 rounded-lg font-semibold hover:bg-[#0284c7] transition-colors duration-300 active:scale-95 shadow-md"
-                aria-label="Book your trek"
-              >
-                Book Your Trek
-              </Link>
-            </div> */}
           </div>
         </div>
       </nav>
