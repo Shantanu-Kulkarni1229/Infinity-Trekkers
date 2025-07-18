@@ -4,6 +4,7 @@ import { Autoplay } from "swiper/modules";
 import { ChevronDown, Mountain, Users, Award } from "lucide-react";
 
 import trek1 from "../../../assets/Hero-Section/1.png";
+import { Link } from "react-router-dom";
 
 const images = [trek1];
 
@@ -82,13 +83,19 @@ const HeroSection = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center pt-4 sm:pt-6">
-            <button className="w-full sm:w-auto group relative px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-base sm:text-lg rounded-full hover:from-emerald-600 hover:to-cyan-600 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-emerald-500/25 min-w-[160px] sm:min-w-[180px]">
-              Start Adventure
-            </button>
+            <Link to='/upcoming-trek' onClick={() => {
 
-            <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-medium text-base sm:text-lg rounded-full hover:bg-white/10 hover:border-white/50 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm min-w-[160px] sm:min-w-[180px]">
-              View Treks
-            </button>
+              window.scrollTo(0, 0); // Scrolls to top
+            }} className="w-full sm:w-auto group relative px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold text-base sm:text-lg rounded-full hover:from-emerald-600 hover:to-cyan-600 transform hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-emerald-500/25 min-w-[160px] sm:min-w-[180px]">
+              Start Adventure
+            </Link>
+
+            <Link to='/gallery ' onClick={() => {
+
+              window.scrollTo(0, 0); // Scrolls to top
+            }} className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-medium text-base sm:text-lg rounded-full hover:bg-white/10 hover:border-white/50 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm min-w-[160px] sm:min-w-[180px]">
+              See Trek Moments
+            </Link>
           </div>
         </div>
 
@@ -123,9 +130,8 @@ const HeroSection = () => {
         {images.map((_, index) => (
           <div
             key={index}
-            className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-500 ${
-              currentSlide === index ? 'bg-emerald-400 w-6 sm:w-8' : 'bg-white/40 hover:bg-white/60'
-            }`}
+            className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-500 ${currentSlide === index ? 'bg-emerald-400 w-6 sm:w-8' : 'bg-white/40 hover:bg-white/60'
+              }`}
           />
         ))}
       </div>

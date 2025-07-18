@@ -46,6 +46,11 @@ const Navbar: React.FC = () => {
   const handleLinkClick = (linkName: string) => {
     setActiveLink(linkName);
     setIsMenuOpen(false);
+    // Scroll to top when a link is clicked
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
   };
 
   return (

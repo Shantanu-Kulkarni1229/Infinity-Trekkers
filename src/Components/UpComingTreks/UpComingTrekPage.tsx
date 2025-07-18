@@ -43,6 +43,7 @@ export interface Trek {
 }
 
 import enhancedTrekData from '../../Data/treks.json';
+import { Link } from 'react-router-dom';
 const UpComingTrekPage: React.FC = () => {
   const [likedTreks, setLikedTreks] = useState<Set<number>>(new Set());
   const [selectedTrek, setSelectedTrek] = useState<number | null>(null);
@@ -75,9 +76,6 @@ const UpComingTrekPage: React.FC = () => {
     console.log('Navigate to / route');
   };
 
-  const handleTrekHistory = (trekId: number): void => {
-    console.log(`Navigate to trek ${trekId} history page`);
-  };
 
   const handleTrekAlbum = (trekId: number): void => {
     console.log(`Navigate to trek ${trekId} photo album`);
@@ -286,13 +284,13 @@ const UpComingTrekPage: React.FC = () => {
 
                     {/* Additional buttons in details view */}
                     <div className="space-y-3 pt-4 border-t">
-                      <button
-                        onClick={() => handleTrekHistory(trek.id)}
+                      <Link
+                        to = '/trek-history'
                         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-300 text-sm sm:text-base"
                       >
                         <BookOpen size={16} />
                         Trek History
-                      </button>
+                      </Link>
                       <button
                         onClick={() => handleTrekAlbum(trek.id)}
                         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 transition-all duration-300 text-sm sm:text-base"

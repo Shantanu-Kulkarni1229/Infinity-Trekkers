@@ -5,7 +5,7 @@
     "image": "https://storage.googleapis.com/goa-app-12a91.appspot.com/2024-08-08T07%3A40%3A55.679Z42.webp?GoogleAccessId=firebase-adminsdk-zeqcj%40goa-app-12a91.iam.gserviceaccount.com&Expires=16447017600&Signature=fmFfMt7%2F587jooq6PiuNkNAzVBnY%2FLui%2Bh4yLre914IJ1L7kEkoJJm2bhiODR7O45uF33lmsZ8AnQAmnKE537v8iXW7LwPRRtz6Azr83Uh%2BdWy3CQ6dZHYcOnAOjOEjmvCrI6OvfdYp8hpeW0PyH8Afya7kcO1aHPV1eYxcajrA%2BXhFdpx5%2BpnzfrLT4a3ECjApJ%2F8JGCUvvALn46V6dMq%2Fv4WxPztBLIn0jUOEX2nKxZZhjDKhzpEe%2B322miIgVC3Y17U3sjszSrm80xDV%2BIZBFODgD8efn6HGoD1tRcaRNwUS%2BFxYMYSVr%2BQyW509wS3F2RfAR1JaJRszEpujc4A%3D%3D",
     "description": "Join us on a thrilling night trek to the highest peak in Maharashtra under the stars.",
     "duration": "12 hours",
-    "fees": 1200,
+    "fees": "1500/",
     "location": "Igatpuri, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Kalsubai+Peak/@19.601944,73.708611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.601944!4d73.708611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
     "difficulty": "Moderate",
@@ -94,7 +94,7 @@
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSGYidcFfXabXv6QOEX7iIk32F3oKAesLUz9w&s",
     "description": "An adventurous trek through one of the toughest routes leading to majestic views.",
     "duration": "2 days",
-    "fees": 2500,
+    "fees": 1500,
     "location": "Malshej Ghat, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Harishchandragad/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F1218v2w0?entry=ttu",
     "difficulty": "Challenging",
@@ -185,7 +185,7 @@
     "image": "https://d3sftlgbtusmnv.cloudfront.net/blog/wp-content/uploads/2024/11/Harihar-Fort-Trekking-Cover-Image-840x425.jpg",
     "description": "Conquer the iconic vertical staircase of Harihar Fort and experience panoramic views from the top of the Western Ghats.",
     "duration": "1 day",
-    "fees": 900,
+    "fees": 1500,
     "location": "Nashik, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Harihar+Fort/@20.039722,73.745,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d20.039722!4d73.745!16s%2Fg%2F1218v2w0?entry=ttu",
     "difficulty": "Moderate",
@@ -277,7 +277,7 @@
     "image": "https://dq1q7qkthxkc0.cloudfront.net/UpdatedMedia/12b70dce-131a-4a08-acf7-47c64c1dd52b.webp",
     "description": "Explore the dense and misty Aadrai jungle with hidden waterfalls, river streams, and thrilling forest trails.",
     "duration": "1 day",
-    "fees": 1000,
+    "fees": 1500,
     "location": "Malshej Ghat, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Aadrai+Jungle+Trek/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
     "difficulty": "Easy to Moderate",
@@ -465,7 +465,7 @@
     "image": "https://www.thomascook.in/blog/wp-content/uploads/2023/09/Devkund.jpg",
     "description": "Trek through dense forest trails to reach the magical Devkund Waterfall, a hidden gem nestled in the Sahyadris with turquoise plunge pools.",
     "duration": "1 day",
-    "fees": 850,
+    "fees": 2200,
     "location": "Bhira, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Devkund+Waterfall/@17.955556,73.5,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d17.955556!4d73.5!16s%2Fg%2F11b8z6c5_q?entry=ttu",
     "difficulty": "Easy to Moderate",
@@ -560,7 +560,7 @@
     "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTXIxTftqH2bmUSpuGWLmRqTk3L9M8ctdhC8A&s",
     "description": "Trek through lush green valleys and misty plateaus to witness the majestic Kalu Waterfall – the highest waterfall in the Malshej region.",
     "duration": "1 day",
-    "fees": 950,
+    "fees": 1600,
     "location": "Malshej Ghat, Maharashtra",
     "locationLink": "https://www.google.com/maps/place/Kalu+Waterfall/@19.386111,73.778611,15z/data=!4m6!3m5!1s0x3bdd9a9e8a7ceb5d:0x6c8efd3b6d6a3b7!8m2!3d19.386111!4d73.778611!16s%2Fg%2F11b8z6c5_q?entry=ttu",
     "difficulty": "Moderate",
@@ -646,6 +646,183 @@
         "/albums/kalu/featured1.jpg",
         "/albums/kalu/featured2.jpg",
         "/albums/kalu/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 9,
+    "name": "Ratangad Fort Trek",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQXKIzaxjXvJkpectJOmA8FT7HtXvWOVxwtIg&s",
+    "description": "Explore the 400-year-old Ratangad Fort nestled in the Sahyadris, surrounded by breathtaking views and historical ruins.",
+    "duration": "1 Day",
+    "fees": "1300/",
+    "location": "Ratanwadi, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Ratangad+Fort",
+    "difficulty": "Moderate",
+    "elevation": "1297m",
+    "groupSize": "10-20 people",
+    "nextDate": "2025-08-10",
+    "rating": 4.7,
+    "reviews": 95,
+    "highlights": ["Natural rock hole – ‘Nedhe’", "View of Bhandardara backwaters", "Historic caves and temples"],
+    "temperature": "18-25°C",
+    "bestTime": "Oct-Feb",
+    "included": ["Guide", "Breakfast", "Lunch", "First-aid support"],
+    "badge": "Heritage",
+    "startTime": "6:00 AM",
+    "endTime": "7:00 PM",
+    "meetingPoint": "Ratanwadi Village",
+    "trekDistance": "8 km",
+    "ageLimit": "12-55 years",
+    "fitnessLevel": "Moderate fitness needed",
+    "thingsToCarry": [
+      "Trekking shoes",
+      "2L water bottle",
+      "Cap & sunglasses",
+      "Snacks & energy bars",
+      "Raincoat (monsoon)",
+      "ID Proof"
+    ],
+    "itinerary": [
+      "6:00 AM - Meet at base village",
+      "7:00 AM - Start trek",
+      "10:00 AM - Reach the fort",
+      "11:30 AM - Explore and photos",
+      "1:00 PM - Lunch break",
+      "2:30 PM - Start return journey",
+      "5:30 PM - Reach base",
+      "7:00 PM - Departure"
+    ],
+    "bookingLink": "https://forms.gle/ratangadtrekbooking",
+    "trekHistory": {
+      "totalTrips": 38,
+      "firstTrek": "2018-12-05",
+      "lastTrek": "2025-06-22",
+      "totalTrekkers": 720,
+      "successRate": "97%",
+      "weatherCancellations": 2,
+      "highlights": [
+        "One of the most scenic Sahyadri fort treks",
+        "Successfully completed 5 monsoon batches in 2023",
+        "Night camping and stargazing events held in 2022"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 980,
+      "categories": [
+        {
+          "name": "Fort Views",
+          "photoCount": 260,
+          "thumbnail": "/albums/ratangad/fort.jpg"
+        },
+        {
+          "name": "Cave Explorations",
+          "photoCount": 180,
+          "thumbnail": "/albums/ratangad/cave.jpg"
+        },
+        {
+          "name": "Trek Trail",
+          "photoCount": 300,
+          "thumbnail": "/albums/ratangad/trail.jpg"
+        },
+        {
+          "name": "Group Photos",
+          "photoCount": 240,
+          "thumbnail": "/albums/ratangad/group.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/ratangad/featured1.jpg",
+        "/albums/ratangad/featured2.jpg",
+        "/albums/ratangad/featured3.jpg"
+      ]
+    }
+  },
+  {
+    "id": 10,
+    "name": "Andarbhan Jungle Trek",
+    "image": "data:image/jpeg;base64,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",
+    "description": "Immerse yourself in the lush green Andarbhan trail, a misty jungle trek through dense forests and waterfalls.",
+    "duration": "1 Day",
+    "fees": "1400/",
+    "location": "Tamhini Ghat, Maharashtra",
+    "locationLink": "https://www.google.com/maps/place/Andarbhan+Trail",
+    "difficulty": "Easy to Moderate",
+    "elevation": "700m",
+    "groupSize": "12-30 people",
+    "nextDate": "2025-08-17",
+    "rating": 4.9,
+    "reviews": 132,
+    "highlights": ["Dense forest trail", "Numerous waterfalls", "Misty monsoon experience"],
+    "temperature": "20-24°C",
+    "bestTime": "June - September",
+    "included": ["Guide", "Breakfast", "Lunch", "Safety gear"],
+    "badge": "Monsoon Favorite",
+    "startTime": "5:30 AM",
+    "endTime": "8:00 PM",
+    "meetingPoint": "Gharoshi Village",
+    "trekDistance": "13 km (One Way Trail)",
+    "ageLimit": "10-60 years",
+    "fitnessLevel": "Basic stamina required",
+    "thingsToCarry": [
+      "Trekking shoes",
+      "Rainwear",
+      "Waterproof bag cover",
+      "Personal snacks",
+      "Extra clothes",
+      "Water bottle (2L)"
+    ],
+    "itinerary": [
+      "5:30 AM - Departure from Pune",
+      "8:00 AM - Reach base village",
+      "8:30 AM - Breakfast",
+      "9:30 AM - Trek begins",
+      "1:00 PM - Reach trail end, lunch break",
+      "2:30 PM - Return journey via vehicle",
+      "8:00 PM - Back to Pune"
+    ],
+    "bookingLink": "https://forms.gle/andarbhantrekbooking",
+    "trekHistory": {
+      "totalTrips": 52,
+      "firstTrek": "2017-07-12",
+      "lastTrek": "2025-07-10",
+      "totalTrekkers": 1085,
+      "successRate": "99%",
+      "weatherCancellations": 1,
+      "highlights": [
+        "Most loved monsoon trek in Sahyadri",
+        "Crossed 1000+ trekkers in 2024",
+        "Known for serene waterfalls and foggy views"
+      ]
+    },
+    "photoAlbum": {
+      "totalPhotos": 1140,
+      "categories": [
+        {
+          "name": "Waterfalls",
+          "photoCount": 350,
+          "thumbnail": "/albums/andarbhan/waterfalls.jpg"
+        },
+        {
+          "name": "Forest Trail",
+          "photoCount": 300,
+          "thumbnail": "/albums/andarbhan/forest.jpg"
+        },
+        {
+          "name": "Trek Mates",
+          "photoCount": 260,
+          "thumbnail": "/albums/andarbhan/people.jpg"
+        },
+        {
+          "name": "Monsoon Beauty",
+          "photoCount": 230,
+          "thumbnail": "/albums/andarbhan/monsoon.jpg"
+        }
+      ],
+      "featuredPhotos": [
+        "/albums/andarbhan/featured1.jpg",
+        "/albums/andarbhan/featured2.jpg",
+        "/albums/andarbhan/featured3.jpg"
       ]
     }
   }

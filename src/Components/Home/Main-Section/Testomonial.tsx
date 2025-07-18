@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import testimonialsData from '../../../Data/Testomonial.json';
+import { Pause, Play } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface Testimonial {
     id: number;
@@ -23,21 +25,22 @@ const Testimonials: React.FC = () => {
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
     const [selectedSeason, setSelectedSeason] = useState<string>('all');
     const [isPaused, setIsPaused] = useState(false);
+    const [expandedFeedback, setExpandedFeedback] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const scrollSpeed = 1; // pixels per frame
+    const scrollSpeed = 1;
 
     // Filter testimonials
     useEffect(() => {
         let filtered = testimonialsData;
-        
+
         if (selectedDifficulty !== 'all') {
             filtered = filtered.filter(t => t.difficulty.toLowerCase() === selectedDifficulty);
         }
-        
+
         if (selectedSeason !== 'all') {
             filtered = filtered.filter(t => t.season.toLowerCase() === selectedSeason);
         }
-        
+
         setFilteredTestimonials(filtered);
     }, [selectedDifficulty, selectedSeason]);
 
@@ -54,8 +57,7 @@ const Testimonials: React.FC = () => {
 
             if (container && !isPaused) {
                 container.scrollLeft += scrollSpeed * (delta / 16);
-                
-                // Reset scroll position when reaching halfway point for seamless loop
+
                 if (container.scrollLeft >= container.scrollWidth / 2) {
                     container.scrollLeft = 0;
                 }
@@ -85,111 +87,128 @@ const Testimonials: React.FC = () => {
         }
     };
 
-    const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => (
-        <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 p-6 border border-gray-100 group">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                    <div className="relative">
-                        <img 
-                            src={testimonial.avatar} 
-                            alt={testimonial.name}
-                            className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-200"
-                        />
-                        {testimonial.verified && (
-                            <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
-                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+    const toggleFeedbackExpansion = (id: number) => {
+        setExpandedFeedback(expandedFeedback === id ? null : id);
+    };
+
+    const TestimonialCard = ({ testimonial }: { testimonial: Testimonial }) => {
+        const isExpanded = expandedFeedback === testimonial.id;
+        const feedbackExceedsLimit = testimonial.feedback.length > 150;
+
+        return (
+            <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 p-6 border border-gray-100 h-full flex flex-col">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                        <div className="relative">
+                            <img
+                                src={testimonial.avatar}
+                                alt={testimonial.name}
+                                className="w-12 h-12 rounded-full object-cover ring-2 ring-blue-200"
+                            />
+                            {testimonial.verified && (
+                                <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1">
+                                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900 text-lg">{testimonial.name}</h3>
+                            <p className="text-sm text-gray-500 flex items-center">
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                            </div>
-                        )}
+                                {testimonial.location}
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-gray-900 text-lg">{testimonial.name}</h3>
-                        <p className="text-sm text-gray-500 flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {testimonial.location}
-                        </p>
-                    </div>
+                    <span className="text-sm text-gray-400">{testimonial.trekDate}</span>
                 </div>
-                <span className="text-sm text-gray-400">{testimonial.trekDate}</span>
-            </div>
 
-            {/* Trek Info */}
-            <div className="mb-4">
-                <h4 className="font-bold text-blue-700 text-lg mb-2">{testimonial.trek}</h4>
-                <div className="flex flex-wrap gap-2 mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(testimonial.difficulty)}`}>
-                        {testimonial.difficulty}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {getSeasonIcon(testimonial.season)} {testimonial.season}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        ⏱️ {testimonial.duration}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                        👥 {testimonial.groupSize}
-                    </span>
-                </div>
-            </div>
-
-            {/* Rating */}
-            <div className="flex items-center mb-4">
-                <div className="flex mr-2">
-                    {[...Array(5)].map((_, i) => (
-                        <svg
-                            key={i}
-                            className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                        >
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                    ))}
-                </div>
-                <span className="text-sm text-gray-600 font-medium">{testimonial.rating}/5</span>
-            </div>
-
-            {/* Feedback */}
-            <blockquote className="text-gray-700 italic mb-4 leading-relaxed">
-                "{testimonial.feedback}"
-            </blockquote>
-
-            {/* Highlights */}
-            <div className="border-t pt-4">
-                <p className="text-sm font-medium text-gray-600 mb-2">Highlights:</p>
-                <div className="flex flex-wrap gap-1">
-                    {testimonial.highlights.map((highlight, index) => (
-                        <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                            {highlight}
+                {/* Trek Info */}
+                <div className="mb-4">
+                    <h4 className="font-bold text-blue-700 text-lg mb-2">{testimonial.trek}</h4>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(testimonial.difficulty)}`}>
+                            {testimonial.difficulty}
                         </span>
-                    ))}
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {getSeasonIcon(testimonial.season)} {testimonial.season}
+                        </span>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            ⏱️ {testimonial.duration}
+                        </span>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            👥 {testimonial.groupSize}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Rating */}
+                <div className="flex items-center mb-4">
+                    <div className="flex mr-2">
+                        {[...Array(5)].map((_, i) => (
+                            <svg
+                                key={i}
+                                className={`w-5 h-5 ${i < testimonial.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                        ))}
+                    </div>
+                    <span className="text-sm text-gray-600 font-medium">{testimonial.rating}/5</span>
+                </div>
+
+                {/* Feedback with Read More */}
+                <blockquote className={`text-gray-700 italic mb-4 leading-relaxed ${isExpanded ? '' : 'line-clamp-3'}`}>
+                    "{testimonial.feedback}"
+                </blockquote>
+
+                {feedbackExceedsLimit && (
+                    <button
+                        onClick={() => toggleFeedbackExpansion(testimonial.id)}
+                        className="text-blue-600 text-sm font-medium mb-4 self-start hover:underline"
+                    >
+                        {isExpanded ? 'Read Less' : 'Read More'}
+                    </button>
+                )}
+
+                {/* Highlights */}
+                <div className="border-t pt-4 mt-auto">
+                    <p className="text-sm font-medium text-gray-600 mb-2">Highlights:</p>
+                    <div className="flex flex-wrap gap-1">
+                        {testimonial.highlights.map((highlight, index) => (
+                            <span key={index} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                {highlight}
+                            </span>
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
-        <section className="py-20 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 px-4">
+        <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50 to-blue-50 px-4">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="text-center mb-12">
+                <div className="text-center mb-10">
                     <h2 className="text-4xl font-bold text-gray-900 mb-4">
                         Adventure Stories from Fellow Trekkers
                     </h2>
                     <p className="text-gray-600 max-w-3xl mx-auto text-lg">
-                        Discover authentic experiences from our community of adventure enthusiasts. 
+                        Discover authentic experiences from our community of adventure enthusiasts.
                         Their stories might inspire your next great adventure!
                     </p>
                 </div>
 
                 {/* Controls */}
-                <div className="flex flex-col sm:flex-row justify-center items-center mb-8 space-y-4 sm:space-y-0">
-                    {/* Filters */}
+                <div className="flex flex-col sm:flex-row justify-center items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
                     <div className="flex space-x-4">
                         <select
                             value={selectedDifficulty}
@@ -215,7 +234,7 @@ const Testimonials: React.FC = () => {
                 </div>
 
                 {/* Statistics */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                     <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
                         <div className="text-2xl font-bold text-blue-600">{filteredTestimonials.length}</div>
                         <div className="text-sm text-gray-600">Reviews</div>
@@ -242,50 +261,42 @@ const Testimonials: React.FC = () => {
 
                 {/* Testimonials Infinite Scroll */}
                 <div className="relative overflow-hidden">
-                    {/* Scroll container with hidden scrollbar */}
-                    <div 
+                    <div
                         ref={containerRef}
-                        className="flex overflow-x-auto py-4 gap-6"
+                        className="flex overflow-x-auto py-0 gap-6"
                         onMouseEnter={() => setIsPaused(true)}
                         onMouseLeave={() => setIsPaused(false)}
-                        style={{ 
+                        style={{
                             scrollBehavior: 'auto',
-                            scrollbarWidth: 'none', // For Firefox
-                            msOverflowStyle: 'none' // For IE/Edge
+                            scrollbarWidth: 'none',
+                            msOverflowStyle: 'none'
                         }}
                     >
-                        {/* Hide scrollbar for Chrome/Safari */}
-                        <style>{`
-                            div::-webkit-scrollbar {
-                                display: none;
-                            }
-                        `}</style>
-                        
-                        {/* Duplicate testimonials for seamless infinite scroll */}
+                        <style>{`div::-webkit-scrollbar { display: none; }`}</style>
+
                         {[...filteredTestimonials, ...filteredTestimonials].map((testimonial, index) => (
-                            <div 
+                            <div
                                 key={`${testimonial.id}-${index}`}
-                                className="flex-shrink-0 w-96"
+                                className="flex-shrink-0 w-80"
                             >
                                 <TestimonialCard testimonial={testimonial} />
                             </div>
                         ))}
                     </div>
-                    
-                    {/* Gradient fade effect on sides */}
+
                     <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-slate-50 via-blue-50 to-transparent pointer-events-none z-10"></div>
                     <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-blue-50 via-blue-50 to-transparent pointer-events-none z-10"></div>
-                    
-                    {/* Scroll indicator */}
-                    <div className="text-center mt-4">
-                        <p className="text-sm text-gray-500 flex items-center justify-center">
-                            <svg className="w-4 h-4 mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                            </svg>
-                            Hover to pause • Auto-scrolling testimonials
-                            <svg className="w-4 h-4 ml-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                            </svg>
+
+                    {/* Compact scroll indicator */}
+                    <div className="text-center mt-2">
+                        <p className="text-xs text-gray-500 flex items-center justify-center">
+                            <button
+                                onClick={() => setIsPaused(!isPaused)}
+                                className="mr-2 text-gray-500 hover:text-gray-700"
+                            >
+                                {isPaused ? <Play size={16} /> : <Pause size={16} />}
+                            </button>
+                            Hover to pause • Auto-scrolling
                         </p>
                     </div>
                 </div>
@@ -294,13 +305,18 @@ const Testimonials: React.FC = () => {
                 <div className="mt-16 text-center bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-8 text-white">
                     <h3 className="text-2xl font-bold mb-4">Ready for Your Adventure?</h3>
                     <p className="text-blue-100 mb-6 max-w-2xl mx-auto">
-                        Join thousands of trekkers who have discovered the magic of the mountains with us. 
+                        Join thousands of trekkers who have discovered the magic of the mountains with us.
                         Your story could be next!
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105">
+                        <Link
+                            to="/upcoming-trek"
+                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                            className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
+                        >
                             Browse Treks
-                        </button>
+                        </Link>
+
                         <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-all duration-300 transform hover:scale-105">
                             Share Your Story
                         </button>

@@ -9,6 +9,7 @@ import Gallery from "./Components/Gallery/Gallery";
 // import ContactUs from "./Components/ContactUs/ContactUs";
 import Navbar from "./Components/Home/Header/Navbar";
 import Footer from "./Components/Home/Footer/Footer";
+import TrekHistory from "./Components/TrekHistory/TrekHistory";
 
 
 function App() {
@@ -23,7 +24,7 @@ function App() {
         <Route path="/gallery" element={<Gallery />} />
         {/* <Route path="/about" element={<AboutUs />} />
         <Route path="/contact" element={<ContactUs />} /> */}
-        
+        <Route path="/trek-history" element={<TrekHistory />} />
       </Routes>
       <Footer />
       </div>

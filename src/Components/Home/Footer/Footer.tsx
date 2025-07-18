@@ -3,8 +3,7 @@ import logo from "../../../assets/Logo/logo.png";
 import { 
   Instagram, 
   Facebook, 
-  Twitter, 
-  Youtube, 
+ 
   MapPin, 
   Phone, 
   Mail, 
@@ -14,7 +13,7 @@ import {
   Shield,
   Heart,
   Star,
-  Send,
+
   ArrowUp,
   Flag
 } from 'lucide-react';
@@ -55,7 +54,7 @@ const Footer = () => {
             </div>
             
             <p className="text-gray-600 leading-relaxed">
-              Creating unforgettable trekking experiences that connect you with nature's wonders and build lasting memories.
+              Discover nature’s wonders through unforgettable treks with us — with a strong commitment to safety, respect for the environment, and mindful adventure.
             </p>
             
             {/* Stats */}
@@ -86,14 +85,13 @@ const Footer = () => {
             {/* Social Media */}
             <div className="flex space-x-3">
               {[
-                { icon: Instagram, color: 'from-pink-500 to-purple-500', label: 'Instagram' },
-                { icon: Facebook, color: 'from-blue-600 to-blue-700', label: 'Facebook' },
-                { icon: Twitter, color: 'from-sky-400 to-sky-500', label: 'Twitter' },
-                { icon: Youtube, color: 'from-red-500 to-red-600', label: 'YouTube' }
-              ].map(({ icon: Icon, color, label }, index) => (
+                { icon: Instagram, color: 'from-pink-500 to-purple-500', label: 'Instagram' , Links: 'https://www.instagram.com/infinity_trekkers_maharashtra/?hl=en'},
+                { icon: Facebook, color: 'from-blue-600 to-blue-700', label: 'Facebook', Links: 'https://www.facebook.com/people/Infinity-Trekkers-India/100093506460400/' },
+                
+              ].map(({ icon: Icon, color, label, Links }, index) => (
                 <a 
                   key={index}
-                  href="#" 
+                  href={Links}
                   className={`group relative p-3 bg-gradient-to-br ${color} rounded-xl text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300`}
                   aria-label={label}
                 >
@@ -147,7 +145,10 @@ const Footer = () => {
                 { name: 'Harihar Fort Trek', rating: '4.8'  , link: 'https://forms.gle/FBWkJg97SkVXNuRx8'},
                 { name: 'Aadrai Jungle Trek', rating: '4.7' , link: 'https://forms.gle/Fs1QAgy3DmBwdDSDA' },
                 { name: 'Harishchandragad', rating: '4.9' , link: 'https://forms.gle/ytfGiASW3fHNd9ZQ8' },
-                { name: 'Kalu Waterfall Trek', rating: '4.8'  , link: 'https://forms.gle/Wt2zxtndP2yYGhvA8'}
+                { name: 'Kalu Waterfall Trek', rating: '4.8'  , link: 'https://forms.gle/Wt2zxtndP2yYGhvA8'},
+                { name: 'Harihar Fort Trek', rating: '4.9'  , link: 'https://forms.gle/FBWkJg97SkVXNuRx8'},
+                { name: 'RAIGAD  Fort Trek', rating: '4.9'  , link: 'https://forms.gle/bHXRL9KquEXD6cvG8'},
+                { name: 'Devkund  Waterfall Trek', rating: '4.8'  , link: 'https://forms.gle/bwoDrk5gh3TGmYsw6'}
               ].map((trek, index) => (
                 <li key={index}>
                   <a 
@@ -175,8 +176,9 @@ const Footer = () => {
             </div>
             <div className="space-y-4">
               {[
-                { icon: MapPin, content: "123 Trekker's Path, Mountain View, Maharashtra, India", type: 'text' },
-                { icon: Phone, content: "+91 98765 43210", type: 'tel', href: "tel:+919876543210" },
+                { icon: MapPin, content: "Cannought Garden, CIDCO Cannought, place, Chhatrapati Sambhajinagar, Maharashtra 431001", type: 'text' },
+                { icon: Phone, content: "+91 7666869100", type: 'tel', href: "tel:+919876543210" },
+                { icon: Phone, content: "+91 8265085025", type: 'tel', href: "tel:+919876543210" },
                 { icon: Mail, content: "info@infinitytrekkers.com", type: 'email', href: "mailto:info@infinitytrekkers.com" }
               ].map(({ icon: Icon, content, href }, index) => (
                 <div key={index} className="flex items-start space-x-3 group">
@@ -196,36 +198,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Newsletter */}
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-3xl p-8 mb-12 border border-blue-100">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="flex items-center justify-center space-x-2 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-800">Join Our Trekking Community</h3>
-            </div>
-            <p className="text-gray-600 mb-6 leading-relaxed">
-              Subscribe to get updates on upcoming treks, special offers, and expert trekking tips delivered to your inbox.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <div className="relative flex-grow">
-                <input 
-                  type="email" 
-                  placeholder="Enter your email address" 
-                  className="w-full px-6 py-4 rounded-2xl bg-white text-gray-800 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-                />
-              </div>
-              <button 
-                onClick={() => console.log('Newsletter subscription clicked')}
-                className="bg-gradient-to-r from-[#0ea5e9] to-[#0369a1]   hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-2xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Subscribe</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Bottom Section */}
         <div className="border-t border-gray-200 pt-8">
@@ -239,9 +211,9 @@ const Footer = () => {
               <p className="text-gray-500 text-xs flex items-center justify-center lg:justify-start space-x-2">
                 <Heart className="w-3 h-3 text-red-500" />
                 <span>Developed by</span>
-                <span className="font-semibold text-gray-700">Shantanu Kulkarni</span>
+                <a href="https://www.linkedin.com/in/shantanu-kulkarni1229/" className="font-semibold text-gray-700 hover:text-blue-600 hover:underline">Shantanu Kulkarni</a>
                 <span>&</span>
-                <span className="font-semibold text-gray-700">Vaishnavi Kothawade</span>
+                <a href="https://www.linkedin.com/in/vaishnavi-kothawade-030627310//" className="font-semibold text-gray-700 hover:text-blue-600 hover:underline">Vaishnavi Kothawade</a>
               </p>
             </div>
 

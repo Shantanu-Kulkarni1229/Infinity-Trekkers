@@ -7,30 +7,22 @@ import {
   Users,
   Mountain,
   Star,
-  Heart,
   Thermometer,
   Compass,
-  Camera} from 'lucide-react';
+  Camera,
+  BookOpen
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import enhancedTrekData from '../../../Data/treks.json';
 
 const UpcomingTreks = () => {
-  const [likedTreks, setLikedTreks] = useState(new Set());
+  
   const [selectedTrek, setSelectedTrek] = useState(null);
 
   // Only show first 4 treks 
   const displayedTreks = enhancedTrekData.slice(0, 4);
 
-  const toggleLike = (trekId : string) => {
-    const newLiked = new Set(likedTreks);
-    if (newLiked.has(trekId)) {
-      newLiked.delete(trekId);
-    } else {
-      newLiked.add(trekId);
-    }
-    setLikedTreks(newLiked);
-  };
 
   const toggleDetails = (trekId: unknown) => {
     setSelectedTrek(prev => prev === trekId ? null : trekId as unknown as null);
@@ -43,7 +35,7 @@ const UpcomingTreks = () => {
     console.log(`Navigate to trek ${trekId} photo album`);
   };
 
-  const getDifficultyColor = (difficulty:string) => {
+  const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'Easy': return 'bg-blue-100 text-blue-800';
       case 'Moderate': return 'bg-yellow-100 text-yellow-800';
@@ -52,16 +44,6 @@ const UpcomingTreks = () => {
     }
   };
 
-  const getBadgeColor = (badge : string) => {
-    switch (badge) {
-      case 'Popular': return 'bg-gradient-to-r from-purple-500 to-pink-500';
-      case 'Adventure': return 'bg-gradient-to-r from-red-500 to-orange-500';
-      case 'Seasonal': return 'bg-gradient-to-r from-blue-500 to-cyan-500';
-      case 'Monsoon Special': return 'bg-gradient-to-r from-blue-500 to-indigo-500';
-      case 'Family Friendly': return 'bg-gradient-to-r from-blue-400 to-cyan-500';
-      default: return 'bg-gradient-to-r from-gray-500 to-gray-600';
-    }
-  };
 
   return (
     <section className="py-8 px-4 max-w-7xl mx-auto bg-gradient-to-br from-blue-50 via-white to-blue-50">
@@ -81,14 +63,14 @@ const UpcomingTreks = () => {
             className="group relative bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden transform hover:-translate-y-2 flex flex-col"
           >
             {/* Badge - Only show when details are not open */}
-            {selectedTrek !== trek.id && (
+            {/* {selectedTrek !== trek.id && (
               <div className={`absolute top-4 left-4 z-10 px-3 py-1 rounded-full text-white text-sm font-semibold ${getBadgeColor(trek.badge)}`}>
                 {trek.badge}
               </div>
-            )}
+            )} */}
 
             {/* Like Button - Only show when details are not open */}
-            {selectedTrek !== trek.id && (
+            {/* {selectedTrek !== trek.id && (
               <button
                 onClick={() => toggleLike(trek.id.toString())}
                 className="absolute top-4 right-4 z-10 p-2 bg-white/80 backdrop-blur-sm rounded-full hover:bg-white transition-all duration-300"
@@ -99,7 +81,7 @@ const UpcomingTreks = () => {
                     } transition-colors duration-300`}
                 />
               </button>
-            )}
+            )} */}
 
             {/* Conditional rendering based on selectedTrek */}
             {selectedTrek === trek.id ? (
@@ -182,6 +164,18 @@ const UpcomingTreks = () => {
                       <Camera size={18} />
                       Our Album
                     </Link>
+                    <Link
+                      to='/trek-history'
+                      onClick={() => {
+                        handleTrekAlbum(trek.id.toString());
+                        window.scrollTo(0, 0); // Scrolls to top
+                      }}
+                      className="w-full flex items-center justify-center gap-2 bg-sky-500 text-white px-4 py-2 rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 transition-all duration-300"
+                    >
+                      <  BookOpen
+                        size={18} />
+                      Trek History
+                    </Link>
                   </div>
                 </div>
 
@@ -193,7 +187,7 @@ const UpcomingTreks = () => {
                       rel="noopener noreferrer"
                       className="block w-full"
                     >
-                      <button className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                      <button className=" w-full flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
                         Join Trek
                       </button></a></div>
                 </div>
@@ -286,7 +280,7 @@ const UpcomingTreks = () => {
                   </div>
 
                   {/* Action Buttons - Always at bottom */}
-                  <div className="flex gap-3 mt-auto">
+                  <div className="flex gap-3 justify-between mt-auto">
                     <div>
                       <a
                         href={trek.bookingLink}
@@ -316,9 +310,9 @@ const UpcomingTreks = () => {
         <Link
           to="/upcoming-trek"
           onClick={() => {
-                        
-                        window.scrollTo(0, 0); // Scrolls to top
-                      }}
+
+            window.scrollTo(0, 0); // Scrolls to top
+          }}
           className="bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold px-8 py-4 rounded-2xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-3"
         >
           All Treks
