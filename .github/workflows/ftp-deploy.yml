@@ -33,3 +33,4 @@ jobs:
           protocol: ftp
           port: 21
           local-dir: ./dist/   # ✅ this folder will be generated after build
+          dangerous-clean-slate: true
