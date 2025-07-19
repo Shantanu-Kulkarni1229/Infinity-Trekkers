@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
-import { ChevronDown, Mountain, Users, Award } from "lucide-react";
+import {  Mountain, Users, Award } from "lucide-react";
 
-import trek1 from "../../../assets/Hero-Section/1.png";
+import trek1 from "../../../assets/Hero-Section/6.png";
 import { Link } from "react-router-dom";
 
 const images = [trek1];
@@ -11,7 +11,7 @@ const images = [trek1];
 const stats = [
   { icon: Mountain, value: "50+", label: "Adventures" },
   { icon: Users, value: "2K+", label: "Explorers" },
-  { icon: Award, value: "4.9", label: "Rating" }
+  { icon: Award, value: "4.", label: "Rating" }
 ];
 
 const HeroSection = () => {
@@ -23,12 +23,7 @@ const HeroSection = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const scrollToContent = () => {
-    window.scrollTo({
-      top: window.innerHeight,
-      behavior: 'smooth'
-    });
-  };
+ 
 
   return (
     <div className="relative w-full min-h-screen h-screen overflow-hidden bg-gray-900">
@@ -47,13 +42,13 @@ const HeroSection = () => {
           {images.map((_src, index) => (
             <SwiperSlide key={index} className="w-full h-full">
               <div className="relative w-full h-full">
-                {/* <img
-                  src={src}
+                <img
+                  src='https://t4.ftcdn.net/jpg/04/61/16/55/360_F_461165568_Hy89OZHJIOI3I0opphdN4NNWCURcYOCA.jpg'
                   alt={`Adventure ${index + 1}`}
                   className="w-full h-full object-cover object-center min-h-screen min-w-full"
-                /> */}
-                <video src="https://cdn.pixabay.com/video/2024/07/03/219300_large.mp4" autoPlay muted loop={true}
-                  className="w-full h-full object-cover object-center min-h-screen min-w-full"></video>
+                />
+                {/* <video src="https://cdn.pixabay.com/video/2024/07/03/219300_large.mp4" autoPlay muted loop={true}
+                  className="w-full h-full object-cover object-center min-h-screen min-w-full"></video> */}
               </div>
             </SwiperSlide>
           ))}
@@ -115,15 +110,7 @@ const HeroSection = () => {
       </div>
 
       <div className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-30 hidden sm:block">
-        <button
-          onClick={scrollToContent}
-          className="flex flex-col items-center text-white/60 hover:text-emerald-400 transition-all duration-300 group animate-bounce"
-        >
-          <span className="text-xs font-medium mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            Explore More
-          </span>
-          <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />
-        </button>
+        
       </div>
 
       <div className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 z-30 flex space-x-2 sm:space-x-3">

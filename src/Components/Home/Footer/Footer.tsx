@@ -77,7 +77,7 @@ const Footer = () => {
                 <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 rounded-full mb-2 mx-auto">
                   <Award className="w-5 h-5 text-yellow-600" />
                 </div>
-                <p className="text-2xl font-bold text-gray-800">5★</p>
+                <p className="text-2xl font-bold text-gray-800">4.8★</p>
                 <p className="text-xs text-gray-500">Rating</p>
               </div>
             </div>
@@ -177,9 +177,9 @@ const Footer = () => {
             <div className="space-y-4">
               {[
                 { icon: MapPin, content: "Cannought Garden, CIDCO Cannought, place, Chhatrapati Sambhajinagar, Maharashtra 431001", type: 'text' },
-                { icon: Phone, content: "+91 7666869100", type: 'tel', href: "tel:+919876543210" },
-                { icon: Phone, content: "+91 8265085025", type: 'tel', href: "tel:+919876543210" },
-                { icon: Mail, content: "info@infinitytrekkers.com", type: 'email', href: "mailto:info@infinitytrekkers.com" }
+                { icon: Phone, content: "+91 7666869100", type: 'tel', href: "tel:+917666869100" },
+                { icon: Phone, content: "+91 8265085025", type: 'tel', href: "tel:+9198265085025" },
+                { icon: Mail, content: "infinitytrekkersindia@gmail.com", type: 'email', href: "mailto:infinitytrekkersindia@gmail.com" }
               ].map(({ icon: Icon, content, href }, index) => (
                 <div key={index} className="flex items-start space-x-3 group">
                   <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-blue-100 transition-colors">

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, X, Heart, Calendar, MapPin, ArrowLeft, ArrowRight, Download, Share2, Eye, Grid, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion'; // Added missing imports
 import galleryData from '../../Data/Gallery.json';
+import { Link } from 'react-router-dom';
 interface GalleryItem {
   id: string;
   trek: string;
@@ -20,9 +21,10 @@ const Gallery = () => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // Mock data - replace with your actual data import
- 
+
+
 
   // Get unique trek names for filter
   const trekOptions = ['All', ...new Set(galleryData.map(item => item.trek))];
@@ -32,7 +34,7 @@ const Gallery = () => {
     .filter(item => {
       const matchesTrek = selectedTrek === 'All' || item.trek === selectedTrek;
       const matchesSearch = item.trek.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.location.toLowerCase().includes(searchTerm.toLowerCase());
+        item.location.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesTrek && matchesSearch;
     })
     .sort((a, b) => {
@@ -49,7 +51,8 @@ const Gallery = () => {
   };
 
   // Toggle favorite
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Stop event from bubbling up
     const newFavorites = new Set(favorites);
     if (newFavorites.has(id)) {
       newFavorites.delete(id);
@@ -91,7 +94,7 @@ const Gallery = () => {
       const response = await fetch(image.image);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      
+
       const link = document.createElement('a');
       link.href = url;
       link.download = `${image.trek}_${image.location}_${image.date}.jpg`;
@@ -110,14 +113,14 @@ const Gallery = () => {
   // Navigate through images in modal
   const navigateImage = (direction: 'prev' | 'next') => {
     if (!selectedImage) return;
-    
+
     const currentIndex = filteredImages.findIndex(img => img.id.toString() === selectedImage.id.toString());
     if (direction === 'next') {
       const nextIndex = (currentIndex + 1) % filteredImages.length;
-      setSelectedImage({...filteredImages[nextIndex], id: filteredImages[nextIndex].id.toString()});
+      setSelectedImage({ ...filteredImages[nextIndex], id: filteredImages[nextIndex].id.toString() });
     } else {
       const prevIndex = currentIndex === 0 ? filteredImages.length - 1 : currentIndex - 1;
-      setSelectedImage({...filteredImages[prevIndex], id: filteredImages[prevIndex].id.toString()});
+      setSelectedImage({ ...filteredImages[prevIndex], id: filteredImages[prevIndex].id.toString() });
     }
   };
 
@@ -192,7 +195,7 @@ const Gallery = () => {
             </h1>
             <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-blue-600 mx-auto mb-6 rounded-full"></div>
           </motion.div>
-          
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -250,22 +253,20 @@ const Gallery = () => {
               <div className="flex gap-2 justify-center lg:justify-start">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-3 rounded-xl transition-all duration-300 ${
-                    viewMode === 'grid'
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-white/80 text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`p-3 rounded-xl transition-all duration-300 ${viewMode === 'grid'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-white/80 text-gray-600 hover:bg-gray-100'
+                    }`}
                   aria-label="Grid view"
                 >
                   <Grid className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-3 rounded-xl transition-all duration-300 ${
-                    viewMode === 'list'
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-white/80 text-gray-600 hover:bg-gray-100'
-                  }`}
+                  className={`p-3 rounded-xl transition-all duration-300 ${viewMode === 'list'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-white/80 text-gray-600 hover:bg-gray-100'
+                    }`}
                   aria-label="List view"
                 >
                   <List className="w-5 h-5" />
@@ -298,11 +299,10 @@ const Gallery = () => {
                           <button
                             key={trek}
                             onClick={() => setSelectedTrek(trek)}
-                            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base ${
-                              selectedTrek === trek
-                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-medium transition-all duration-300 text-sm sm:text-base ${selectedTrek === trek
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
                           >
                             {trek}
                           </button>
@@ -312,18 +312,35 @@ const Gallery = () => {
 
                     {/* Sort Options */}
                     <div className="md:w-48 flex-shrink-0">
-                      <label htmlFor="sort-select" className="block text-sm font-semibold text-gray-700 mb-3">Sort by</label>
-                      <select
-                        id="sort-select"
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as 'date' | 'trek' | 'location')}
-                        className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                      >
-                        <option value="date">Date</option>
-                        <option value="trek">Trek Name</option>
-                        <option value="location">Location</option>
-                      </select>
+                      <div className='flex items-center justify-between mb-3'>
+                        <label htmlFor="sort-select" className="block text-sm font-semibold text-gray-700">
+                          Sort by
+                        </label>
+                      </div>
+
+                      <div className="relative">
+                        <select
+                          id="sort-select"
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value as 'date' | 'trek' | 'location')}
+                          onFocus={() => setIsOpen(true)}
+                          onBlur={() => setIsOpen(false)}
+                          className="w-full appearance-none p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base pr-10"
+                        >
+                          <option value="date">Date</option>
+                          <option value="trek">Trek Name</option>
+                          <option value="location">Location</option>
+                        </select>
+
+                        {/* Dynamic Arrow */}
+                        <div className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                          {isOpen ? '▲' : '▼'}
+                        </div>
+                      </div>
                     </div>
+
+
+
                   </div>
                 </motion.div>
               )}
@@ -343,7 +360,7 @@ const Gallery = () => {
         ) : filteredImages.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-gray-500 text-lg">No images found matching your criteria</div>
-            <button 
+            <button
               onClick={() => {
                 setSelectedTrek('All');
                 setSearchTerm('');
@@ -354,13 +371,12 @@ const Gallery = () => {
             </button>
           </div>
         ) : (
-          <motion.div 
+          <motion.div
             layout
-            className={`max-w-7xl mx-auto ${
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8' 
-                : 'space-y-4 sm:space-y-6'
-            }`}
+            className={`max-w-7xl mx-auto ${viewMode === 'grid'
+              ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8'
+              : 'space-y-4 sm:space-y-6'
+              }`}
           >
             <AnimatePresence mode="popLayout">
               {filteredImages.map((item) => (
@@ -371,33 +387,27 @@ const Gallery = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
-                  className={`group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${
-                    viewMode === 'list' ? 'flex flex-col sm:flex-row gap-4 p-4 sm:p-6' : ''
-                  }`}
-                  onClick={() => setSelectedImage({...item, id: item.id.toString()})}
+                  className={`group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${viewMode === 'list' ? 'flex flex-col sm:flex-row gap-4 p-4 sm:p-6' : ''
+                    }`}
+                  onClick={() => setSelectedImage({ ...item, id: item.id.toString() })}
                 >
                   {/* Image Container */}
-                  <div className={`relative overflow-hidden ${
-                    viewMode === 'list' ? 'sm:w-48 h-48 sm:h-32 flex-shrink-0' : 'aspect-[4/3]'
-                  }`}>
+                  <div className={`relative overflow-hidden ${viewMode === 'list' ? 'sm:w-48 h-48 sm:h-32 flex-shrink-0' : 'aspect-[4/3]'
+                    }`}>
                     <img
                       src={item.image}
                       alt={`Trek photo from ${item.location}`}
                       className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                     />
-                    
+
                     {/* Favorite Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-toggleFavorite(item.id.toString());
-                      }}
-                      className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
-                      aria-label={favorites.has(item.id.toString()) ? "Remove from favorites" : "Add to favorites"}
-                    >
-<Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.has(item.id.toString()) ? 'text-red-500 fill-red-500' : 'text-gray-600'}`} />
-                    </button>
+                    {/* In the gallery item */}
+                    
+
+
+
+
 
                     {/* Hover Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
@@ -417,7 +427,7 @@ toggleFavorite(item.id.toString());
                         {item.trek}
                       </h3>
                     </div>
-                    
+
                     <div className="space-y-1 sm:space-y-2 text-gray-600 text-sm sm:text-base">
                       <div className="flex items-center gap-2">
                         <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
@@ -434,7 +444,7 @@ toggleFavorite(item.id.toString());
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedImage({...item, id: item.id.toString()});
+                            setSelectedImage({ ...item, id: item.id.toString() });
                           }}
                           className="px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-200 text-xs sm:text-sm"
                         >
@@ -443,7 +453,7 @@ toggleFavorite(item.id.toString());
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            shareImage({...item, id: item.id.toString()});
+                            shareImage({ ...item, id: item.id.toString() });
                           }}
                           className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-xs sm:text-sm"
                         >
@@ -485,7 +495,7 @@ toggleFavorite(item.id.toString());
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
-                          onClick={() => toggleFavorite(selectedImage.id)}
+                          onClick={(e) => toggleFavorite(e, selectedImage.id)}
                           className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors duration-200"
                           aria-label={favorites.has(selectedImage.id) ? "Remove from favorites" : "Add to favorites"}
                         >
@@ -575,7 +585,7 @@ toggleFavorite(item.id.toString());
         </AnimatePresence>
 
         {/* Enhanced CTA Section */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.7 }}
@@ -591,18 +601,22 @@ toggleFavorite(item.id.toString());
                 Join thousands of adventurers and create memories that will last a lifetime
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                <button 
+                <button
                   className="bg-white text-gray-800 font-bold py-3 px-6 sm:py-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 text-sm sm:text-base"
                   aria-label="Book your trek now"
                 >
                   Book Your Trek Now
                 </button>
-                <button 
+                <Link
+                  to="/upcoming-trek"
+                  onClick={() => {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   className="border-2 border-white text-white font-bold py-3 px-6 sm:py-4 sm:px-8 rounded-xl sm:rounded-2xl hover:bg-white hover:text-gray-800 transition-all duration-300 text-sm sm:text-base"
                   aria-label="View all treks"
                 >
                   View All Treks
-                </button>
+                </Link>
               </div>
             </div>
           </div>

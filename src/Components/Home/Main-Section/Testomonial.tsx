@@ -28,7 +28,8 @@ const Testimonials: React.FC = () => {
     const [expandedFeedback, setExpandedFeedback] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const scrollSpeed = 1;
-
+    const [isDifficultyOpen, setIsDifficultyOpen] = useState(false);
+    const [isSeasonOpen, setIsSeasonOpen] = useState(false);
     // Filter testimonials
     useEffect(() => {
         let filtered = testimonialsData;
@@ -210,26 +211,45 @@ const Testimonials: React.FC = () => {
                 {/* Controls */}
                 <div className="flex flex-col sm:flex-row justify-center items-center mb-6 space-y-4 sm:space-y-0 sm:space-x-4">
                     <div className="flex space-x-4">
-                        <select
-                            value={selectedDifficulty}
-                            onChange={(e) => setSelectedDifficulty(e.target.value)}
-                            className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        >
-                            <option value="all">All Difficulties</option>
-                            <option value="easy">Easy</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="hard">Hard</option>
-                        </select>
-                        <select
-                            value={selectedSeason}
-                            onChange={(e) => setSelectedSeason(e.target.value)}
-                            className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        >
-                            <option value="all">All Seasons</option>
-                            <option value="winter">Winter</option>
-                            <option value="monsoon">Monsoon</option>
-                            <option value="summer">Summer</option>
-                        </select>
+
+                        {/* Difficulty Filter */}
+                        <div className="relative w-40">
+                            <select
+                                value={selectedDifficulty}
+                                onChange={(e) => setSelectedDifficulty(e.target.value)}
+                                onFocus={() => setIsDifficultyOpen(true)}
+                                onBlur={() => setIsDifficultyOpen(false)}
+                                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none pr-8"
+                            >
+                                <option value="all">All Difficulties</option>
+                                <option value="easy">Easy</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="hard">Hard</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                {isDifficultyOpen ? '▲' : '▼'}
+                            </div>
+                        </div>
+
+                        {/* Season Filter */}
+                        <div className="relative w-40">
+                            <select
+                                value={selectedSeason}
+                                onChange={(e) => setSelectedSeason(e.target.value)}
+                                onFocus={() => setIsSeasonOpen(true)}
+                                onBlur={() => setIsSeasonOpen(false)}
+                                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none pr-8"
+                            >
+                                <option value="all">All Seasons</option>
+                                <option value="winter">Winter</option>
+                                <option value="monsoon">Monsoon</option>
+                                <option value="summer">Summer</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                {isSeasonOpen ? '▲' : '▼'}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 

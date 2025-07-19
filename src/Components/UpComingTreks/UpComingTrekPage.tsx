@@ -17,6 +17,7 @@ import {
   Search
 } from 'lucide-react';
 
+
 // Define TypeScript interfaces
 export interface Trek {
   id: number;
@@ -108,13 +109,14 @@ const UpComingTrekPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {/* Back Button */}
-            <button
+            <Link
+              to='/'
               onClick={handleBackToHome}
               className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-300 font-medium"
             >
               <ArrowLeft size={20} />
               <span className="hidden sm:inline">Back</span>
-            </button>
+            </Link>
 
             {/* Title */}
             <div className="text-center flex-1 mx-2 sm:mx-4 lg:mx-8">
@@ -285,7 +287,7 @@ const UpComingTrekPage: React.FC = () => {
                     {/* Additional buttons in details view */}
                     <div className="space-y-3 pt-4 border-t">
                       <Link
-                        to = '/trek-history'
+                        to='/trek-history'
                         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2.5 sm:py-3 rounded-lg font-medium hover:from-blue-600 hover:to-blue-700 transition-all duration-300 text-sm sm:text-base"
                       >
                         <BookOpen size={16} />
@@ -393,7 +395,7 @@ const UpComingTrekPage: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Action Buttons - Always at bottom */}
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-auto">
                       <a

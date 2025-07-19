@@ -102,7 +102,7 @@ const Navbar: React.FC = () => {
                     : "text-xs sm:text-sm hidden sm:block"
                 } transition-[font-size] duration-300`}
               >
-                Adventure Awaits
+                Stay Beyond Limits
               </span>
             </div>
           </Link>
