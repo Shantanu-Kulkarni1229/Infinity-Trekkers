@@ -7,10 +7,10 @@ on:
 
 jobs:
   ftp-deploy:
-    name: 📤 FTP Deploy
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: FTP Deploy
@@ -19,6 +19,6 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
+          protocol: ftp
           port: 21
-          local-dir: ./dist
+          local-dir: ./dist/   # ✅ folder path ends with /
