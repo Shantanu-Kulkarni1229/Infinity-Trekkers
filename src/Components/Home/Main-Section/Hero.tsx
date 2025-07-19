@@ -62,7 +62,7 @@ const HeroSection = () => {
         <div className={`text-center space-y-4 sm:space-y-6 lg:space-y-8 max-w-4xl mx-auto w-full transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="space-y-1 sm:space-y-2 lg:space-y-4">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white leading-tight tracking-tight">
-              INFINITY
+              INFINITYyyy
             </h1>
             <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-emerald-400 tracking-wider">
               TREKKERS INDIA
