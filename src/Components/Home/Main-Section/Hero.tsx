@@ -43,7 +43,7 @@ const HeroSection = () => {
             <SwiperSlide key={index} className="w-full h-full">
               <div className="relative w-full h-full">
                 <img
-                  src='https://t4.ftcdn.net/jpg/04/61/16/55/360_F_461165568_Hy89OZHJIOI3I0opphdN4NNWCURcYOCA.jpg'
+                  src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQv2ac2iUY_8xz4orBippvo0B7_WNTil_tVA&s'
                   alt={`Adventure ${index + 1}`}
                   className="w-full h-full object-cover object-center min-h-screen min-w-full"
                 />
