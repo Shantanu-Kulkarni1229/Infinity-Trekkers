@@ -63,7 +63,7 @@ const Footer = () => {
                 <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full mb-2 mx-auto">
                   <Users className="w-5 h-5 text-blue-600" />
                 </div>
-                <p className="text-2xl font-bold text-gray-800">500+</p>
+                <p className="text-2xl font-bold text-gray-800">5000+</p>
                 <p className="text-xs text-gray-500">Happy Trekkers</p>
               </div>
               <div className="text-center">

@@ -3,15 +3,15 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import {  Mountain, Users, Award } from "lucide-react";
 
-import trek1 from "../../../assets/Hero-Section/11.png";
+import trek1 from "../../../assets/Hero-Section/Main-hero.jpg";
 import { Link } from "react-router-dom";
 
 const images = [trek1];
 
 const stats = [
   { icon: Mountain, value: "50+", label: "Adventures" },
-  { icon: Users, value: "2K+", label: "Explorers" },
-  { icon: Award, value: "4.", label: "Rating" }
+  { icon: Users, value: "5K+", label: "Explorers" },
+  { icon: Award, value: "4.8", label: "Rating" }
 ];
 
 const HeroSection = () => {
