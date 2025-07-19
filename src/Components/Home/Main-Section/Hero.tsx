@@ -3,7 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import {  Mountain, Users, Award } from "lucide-react";
 
-import trek1 from "../../../assets/Hero-Section/6.png";
+import trek1 from "../../../assets/Hero-Section/11.png";
 import { Link } from "react-router-dom";
 
 const images = [trek1];
@@ -43,8 +43,7 @@ const HeroSection = () => {
             <SwiperSlide key={index} className="w-full h-full">
               <div className="relative w-full h-full">
                 <img
-                  src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSQv2ac2iUY_8xz4orBippvo0B7_WNTil_tVA&s'
-                  
+                  src={trek1}
                   alt={`Adventure ${index + 1}`}
                   className="w-full h-full object-cover object-center min-h-screen min-w-full"
                 />
@@ -62,7 +61,7 @@ const HeroSection = () => {
         <div className={`text-center space-y-4 sm:space-y-6 lg:space-y-8 max-w-4xl mx-auto w-full transition-all duration-1000 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="space-y-1 sm:space-y-2 lg:space-y-4">
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white leading-tight tracking-tight">
-              INFINITYyyy
+              INFINITY
             </h1>
             <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-emerald-400 tracking-wider">
               TREKKERS INDIA
