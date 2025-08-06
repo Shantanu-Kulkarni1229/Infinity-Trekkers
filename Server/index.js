@@ -17,12 +17,24 @@ const app = express();
 // Middleware
 
 // Middleware
+const allowedOrigins = [
+  "http://localhost:5173", // local frontend
+  "https://infinity-trekkers.vercel.app" // production frontend
+];
+
 app.use(cors({
-  origin: ["*"], 
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"],
   credentials: true
 }));
+
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
