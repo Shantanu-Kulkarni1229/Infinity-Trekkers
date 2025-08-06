@@ -2,6 +2,7 @@
 import HeroSection from "./Main-Section/Hero";
 import UpcomingTreks from "./Main-Section/UpComingTreks";
 import Testimonials from "./Main-Section/Testomonial";
+import EnquiryForm from "./Main-Section/EnquiryForm";
 
 function Home() {
   return (
@@ -9,6 +10,7 @@ function Home() {
       
       <HeroSection />
       <UpcomingTreks />
+      <EnquiryForm />
       <Testimonials />
       
 

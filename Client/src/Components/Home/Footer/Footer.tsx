@@ -141,14 +141,14 @@ const Footer = () => {
             </div>
             <ul className="space-y-3">
               {[
-                { name: 'Kalsubai Night Trek', rating: '4.9', link: 'https://forms.gle/vqbxY2QHg4ZbaLQx7' },
-                { name: 'Harihar Fort Trek', rating: '4.8'  , link: 'https://forms.gle/FBWkJg97SkVXNuRx8'},
-                { name: 'Aadrai Jungle Trek', rating: '4.7' , link: 'https://forms.gle/Fs1QAgy3DmBwdDSDA' },
-                { name: 'Harishchandragad', rating: '4.9' , link: 'https://forms.gle/ytfGiASW3fHNd9ZQ8' },
-                { name: 'Kalu Waterfall Trek', rating: '4.8'  , link: 'https://forms.gle/Wt2zxtndP2yYGhvA8'},
-                { name: 'Harihar Fort Trek', rating: '4.9'  , link: 'https://forms.gle/FBWkJg97SkVXNuRx8'},
-                { name: 'RAIGAD  Fort Trek', rating: '4.9'  , link: 'https://forms.gle/bHXRL9KquEXD6cvG8'},
-                { name: 'Devkund  Waterfall Trek', rating: '4.8'  , link: 'https://forms.gle/bwoDrk5gh3TGmYsw6'}
+                { name: 'Kalsubai Night Trek', rating: '4.9', link: '#' },
+                { name: 'Harihar Fort Trek', rating: '4.8'  , link: '#'},
+                { name: 'Aadrai Jungle Trek', rating: '4.7' , link: '#' },
+                { name: 'Harishchandragad', rating: '4.9' , link: '#' },
+                { name: 'Kalu Waterfall Trek', rating: '4.8'  , link: '#'},
+                { name: 'Harihar Fort Trek', rating: '4.9'  , link: '#'},
+                { name: 'RAIGAD  Fort Trek', rating: '4.9'  , link: '#'},
+                { name: 'Devkund  Waterfall Trek', rating: '4.8'  , link: '#'}
               ].map((trek, index) => (
                 <li key={index}>
                   <a 
