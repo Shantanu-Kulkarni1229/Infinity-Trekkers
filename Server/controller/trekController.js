@@ -56,7 +56,7 @@ export const addTrek = async (req, res) => {
         ? JSON.parse(cityPricing) 
         : cityPricing;
 
-      const validCities = ["Aurangabad", "Pune", "Mumbai"];
+      const validCities = ["Chh. Sambhajinagar", "Pune", "Mumbai"];
 
       // Filter only valid cities (ignore others)
       parsedCityPricing = parsedCityPricing.filter(city => 
@@ -67,7 +67,7 @@ export const addTrek = async (req, res) => {
       if (parsedCityPricing.length === 0) {
         return res.status(400).json({
           success: false,
-          message: `At least one valid city (Aurangabad, Pune, Mumbai) must be provided`
+          message: `At least one valid city (Chh. Sambhajinagar, Pune, Mumbai) must be provided`
         });
       }
     } else {

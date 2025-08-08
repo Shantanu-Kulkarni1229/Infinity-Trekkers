@@ -19,7 +19,7 @@ type CityPricing = {
   discountPrice: string;
 };
 
-const cities = ["Aurangabad", "Pune", "Mumbai"] as const;
+const cities = ["Chh. Sambhajinagar", "Pune", "Mumbai"] as const;
 const difficulties = ["Easy", "Moderate", "Hard"] as const;
 
 const AddTrek = () => {

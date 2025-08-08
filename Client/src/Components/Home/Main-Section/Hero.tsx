@@ -3,7 +3,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import { Mountain, Users, Award } from "lucide-react";
 
-import trek1 from "../../../assets/Hero-Section/Main-hero.jpg";
+import trek1 from "../../../assets/Hero-Section/final.png";
 import { Link } from "react-router-dom";
 
 const images = [trek1];
