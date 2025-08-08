@@ -25,18 +25,18 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100">
+    <div className="flex items-center justify-center h-screen bg-blue-100">
       <form
         onSubmit={handleSubmit}
         className="bg-white p-8 rounded-xl shadow-md w-96"
       >
-        <h2 className="text-2xl font-semibold mb-4 text-center">Admin Login</h2>
+        <h2 className="text-2xl font-semibold mb-4 text-center text-black">Admin Login</h2>
         <input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
           placeholder="Enter Admin Token"
-          className="w-full px-4 py-2 border rounded-md mb-4"
+          className="w-full px-4 py-2 border rounded-md mb-4 border-black placeholder:text-black text-black"
         />
         {error && (
           <p className="text-red-500 text-sm mb-2 text-center">{error}</p>
