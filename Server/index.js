@@ -19,7 +19,7 @@ const app = express();
 // Middleware
 const allowedOrigins = [
   "http://localhost:5173", // local frontend
-  "https://infinitytrekkersindia.com/" // production frontend
+  "https://infinitytrekkersindia.com" // production frontend (no trailing slash)
 ];
 
 app.use(cors({
