@@ -27,7 +27,7 @@ const TestimonialSection = () => {
   const [treks, setTreks] = useState<{ _id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: "",
-    trekId: "",
+    trek: "",
     date: "",
     starRating: 0,
     feedback: "",
@@ -58,10 +58,8 @@ const TestimonialSection = () => {
   // Helper function to strip HTML tags from Quill content
   const stripHtmlTags = (html: string) => {
     if (!html) return '';
-    // Create a temporary div element
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
-    // Get text content without HTML tags
     return tempDiv.textContent || tempDiv.innerText || '';
   };
 
@@ -114,15 +112,15 @@ const TestimonialSection = () => {
         return;
       }
 
+      setFormData({ ...formData, photo: file });
+      
+      // Create preview URL
       const reader = new FileReader();
+      reader.onload = () => {
+        setFormData(prev => ({ ...prev, photo: reader.result as string }));
+      };
       reader.readAsDataURL(file);
-      reader.onloadend = () => {
-        setFormData({ ...formData, photo: reader.result as string });
-        addToast('success', 'Image uploaded successfully!');
-      };
-      reader.onerror = () => {
-        addToast('error', 'Failed to upload image. Please try again.');
-      };
+      addToast('success', 'Image uploaded successfully!');
     }
   };
 
@@ -142,8 +140,8 @@ const TestimonialSection = () => {
       addToast('warning', 'Please enter your name.');
       return;
     }
-    if (!formData.trekId) {
-      addToast('warning', 'Please select a trek.');
+    if (!formData.trek.trim()) {
+      addToast('warning', 'Please enter the trek name.');
       return;
     }
     if (!formData.date) {
@@ -154,25 +152,39 @@ const TestimonialSection = () => {
       addToast('warning', 'Please rate your experience.');
       return;
     }
-    if (!formData.feedback.trim()) {
+    if (!formData.feedback.trim() || formData.feedback === '<p><br></p>') {
       addToast('warning', 'Please share your feedback.');
       return;
     }
 
     setLoading(true);
     try {
-      await axios.post(`${baseUrl}/api/feedback/create`, {
-        name: formData.name,
-        trekId: formData.trekId,
-        date: formData.date,
-        starRating: formData.starRating,
-        feedback: formData.feedback,
-        photo: formData.photo,
+      const formDataToSend = new FormData();
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('trek', formData.trek);
+      formDataToSend.append('date', new Date(formData.date).toISOString());
+      formDataToSend.append('starRating', formData.starRating.toString());
+      formDataToSend.append('feedback', stripHtmlTags(formData.feedback));
+      
+      if (formData.photo) {
+        if (typeof formData.photo === 'string') {
+          // Convert base64 to blob
+          const blob = await fetch(formData.photo).then(r => r.blob());
+          formDataToSend.append('photo', blob, 'upload.jpg');
+        } else {
+          formDataToSend.append('photo', formData.photo);
+        }
+      }
+
+      await axios.post(`${baseUrl}/api/feedback/create`, formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
       setFormData({
         name: "",
-        trekId: "",
+        trek: "",
         date: "",
         starRating: 0,
         feedback: "",
@@ -180,7 +192,7 @@ const TestimonialSection = () => {
       });
       fetchFeedbacks();
       setIsFormVisible(false);
-      addToast('success', 'Your testimonial has been submitted successfully! Thank you for sharing your experience.');
+      addToast('success', 'Your testimonial has been submitted successfully!');
     } catch (error: any) {
       console.error("Error submitting feedback:", error);
       const errorMessage = error.response?.data?.message || 'Failed to submit testimonial. Please try again.';
@@ -420,7 +432,7 @@ const TestimonialSection = () => {
                             ))}
                           </div>
 
-                          {/* Enhanced Feedback Content - Using stripHtmlTags */}
+                          {/* Enhanced Feedback Content */}
                           <div className="text-gray-700 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6 line-clamp-3 sm:line-clamp-4 font-light">
                             {stripHtmlTags(fb.feedback)}
                           </div>
@@ -537,20 +549,15 @@ const TestimonialSection = () => {
                             <span>🏔️</span>
                             <span>Trek Experience</span>
                           </label>
-                          <select
-                            name="trekId"
-                            value={formData.trekId}
+                          <input
+                            type="text"
+                            name="trek"
+                            value={formData.trek}
                             onChange={handleChange}
-                            className="w-full p-3 sm:p-4 bg-white/90 border border-sky-200 rounded-xl text-gray-800 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:bg-white transition-all outline-none backdrop-blur-sm text-sm sm:text-base"
+                            placeholder="Enter trek name"
+                            className="w-full p-3 sm:p-4 bg-white/90 border border-sky-200 rounded-xl text-gray-800 placeholder-gray-400 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 focus:bg-white transition-all outline-none backdrop-blur-sm text-sm sm:text-base"
                             required
-                          >
-                            <option value="" className="bg-white">Select your adventure</option>
-                            {treks.map((trek) => (
-                              <option key={trek._id} value={trek._id} className="bg-white">
-                                {trek.name}
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </motion.div>
                       </div>
 
@@ -646,7 +653,7 @@ const TestimonialSection = () => {
                           {formData.photo && (
                             <div className="mt-3">
                               <img 
-                                src={formData.photo as string} 
+                                src={typeof formData.photo === 'string' ? formData.photo : URL.createObjectURL(formData.photo)}
                                 alt="Preview" 
                                 className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg border-2 border-sky-200"
                               />

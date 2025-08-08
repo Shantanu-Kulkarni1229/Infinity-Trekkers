@@ -5,13 +5,12 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 interface Trek {
-  _id: string;
   name: string;
 }
 
 interface FeedbackFormState {
   name: string;
-  trekId: string;
+  trek: string;
   date: string;
   feedback: string;
   starRating: number;
@@ -24,7 +23,7 @@ const FeedbackForm: React.FC = () => {
   const [loadingTreks, setLoadingTreks] = useState<boolean>(true);
   const [formData, setFormData] = useState<FeedbackFormState>({
     name: "",
-    trekId: "",
+    trek: "",
     date: "",
     feedback: "",
     starRating: 0,
@@ -101,7 +100,7 @@ const FeedbackForm: React.FC = () => {
     try {
       const formDataToSend = new FormData();
       formDataToSend.append("name", formData.name);
-      formDataToSend.append("trekId", formData.trekId);
+      formDataToSend.append("trek", formData.trek);
       formDataToSend.append("date", formData.date);
       formDataToSend.append("feedback", formData.feedback);
       formDataToSend.append("starRating", formData.starRating.toString());
@@ -123,7 +122,7 @@ const FeedbackForm: React.FC = () => {
       toast.success(res.data.message || "Feedback submitted successfully!");
       setFormData({
         name: "",
-        trekId: "",
+        trek: "",
         date: "",
         feedback: "",
         starRating: 0,
@@ -183,25 +182,17 @@ const FeedbackForm: React.FC = () => {
         {/* Trek Dropdown */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Select Trek *
+            Enter Trek  Name *
           </label>
-          <select
-            name="trekId"
-            value={formData.trekId}
+          <input
+            type="text"
+            name="trek"
+            placeholder="Enter trek name"
+            value={formData.trek}
             onChange={handleChange}
             className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-400 outline-none text-sm sm:text-base"
             required
-            disabled={loadingTreks}
-          >
-            <option value="">
-              {loadingTreks ? "Loading treks..." : "Select a trek"}
-            </option>
-            {treks.map((trek) => (
-              <option key={trek._id} value={trek._id}>
-                {trek.name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {/* Date */}
