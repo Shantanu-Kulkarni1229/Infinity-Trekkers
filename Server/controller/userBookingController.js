@@ -343,7 +343,7 @@ export const verifyPayment = async (req, res) => {
             <p>We can't wait to share this adventure with you! 🏔️</p>
             
             <p>Warm regards,<br/>
-            <strong>The Infinity Trekkers Team</strong></p>
+            <strong>Infinity Trekkers India Team</strong></p>
         </div>
         
         <div class="footer">
@@ -495,7 +495,7 @@ const adminMailOptions = {
         </div>
         
         <div class="footer">
-            <small>This is an automated notification from Infinity Trekkers</small>
+            <small>This is an automated notification from Infinity Trekkers India</small>
         </div>
     </div>
 </body>

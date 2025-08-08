@@ -24,7 +24,7 @@ interface Toast {
 
 const TestimonialSection = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
-  const [treks, setTreks] = useState<{ _id: string; name: string }[]>([]);
+  const [, setTreks] = useState<{ _id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     trek: "",

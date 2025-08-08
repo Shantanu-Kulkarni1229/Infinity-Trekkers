@@ -19,8 +19,8 @@ interface FeedbackFormState {
 }
 
 const FeedbackForm: React.FC = () => {
-  const [treks, setTreks] = useState<Trek[]>([]);
-  const [loadingTreks, setLoadingTreks] = useState<boolean>(true);
+  const [, setTreks] = useState<Trek[]>([]);
+  const [, setLoadingTreks] = useState<boolean>(true);
   const [formData, setFormData] = useState<FeedbackFormState>({
     name: "",
     trek: "",

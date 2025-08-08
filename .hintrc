@@ -18,6 +18,7 @@
     ],
     "no-inline-styles": "off",
     "typescript-config/consistent-casing": "off",
-    "typescript-config/is-valid": "off"
+    "typescript-config/is-valid": "off",
+    "disown-opener": "off"
   }
 }

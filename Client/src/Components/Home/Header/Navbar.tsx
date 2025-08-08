@@ -68,7 +68,7 @@ const Navbar: React.FC = () => {
             onClick={() => handleLinkClick("Home")}
             aria-label="Home"
           >
-            <div className="relative h-8 w-8 sm:h-9 sm:w-9 transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+            <div className="relative h-8 w-8 sm:h-18 sm:w-18 transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
               <div className="relative flex items-center justify-center h-full w-full">
                 <img
                   src={logo}

@@ -3,7 +3,7 @@ import logo from "../../../assets/Logo/logo.png";
 import { 
   Instagram, 
   Facebook, 
- 
+
   MapPin, 
   Phone, 
   Mail, 
@@ -44,7 +44,7 @@ const Footer = () => {
               </div>
               <div>
                 <h3 className="text-2xl font-bold bg-gradient-to-r from-[#0ea5e9] to-[#0369a1] bg-clip-text text-transparent">
-                  Infinity Trekkers
+                  Infinity Trekkers India
                 </h3>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <Flag className="w-3 h-3" />
@@ -77,7 +77,7 @@ const Footer = () => {
                 <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 rounded-full mb-2 mx-auto">
                   <Award className="w-5 h-5 text-yellow-600" />
                 </div>
-                <p className="text-2xl font-bold text-gray-800">4.8★</p>
+                <p className="text-2xl font-bold text-gray-800">4.9★</p>
                 <p className="text-xs text-gray-500">Rating</p>
               </div>
             </div>
@@ -85,7 +85,7 @@ const Footer = () => {
             {/* Social Media */}
             <div className="flex space-x-3">
               {[
-                { icon: Instagram, color: 'from-pink-500 to-purple-500', label: 'Instagram' , Links: 'https://www.instagram.com/infinity_trekkers_maharashtra/?hl=en'},
+                { icon: Instagram, color: 'from-pink-500 to-purple-500', label: 'Instagram' , Links: 'https://www.instagram.com/infinity_trekkers_india?igsh=bzIxdzJweWs5eHB1'},
                 { icon: Facebook, color: 'from-blue-600 to-blue-700', label: 'Facebook', Links: 'https://www.facebook.com/people/Infinity-Trekkers-India/100093506460400/' },
                 
               ].map(({ icon: Icon, color, label, Links }, index) => (

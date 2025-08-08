@@ -11,7 +11,7 @@ const images = [trek1];
 const stats = [
   { icon: Mountain, value: "50+", label: "Adventures" },
   { icon: Users, value: "5K+", label: "Explorers" },
-  { icon: Award, value: "4.8", label: "Rating" }
+  { icon: Award, value: "4.9", label: "Rating" }
 ];
 
 const HeroSection = () => {
@@ -70,7 +70,7 @@ const HeroSection = () => {
 
           <div className="space-y-2 sm:space-y-3 lg:space-y-4">
             <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-cyan-300 font-medium">
-              Adventure Awaits Beyond
+              The world of Adventure
             </p>
             <p className="text-sm sm:text-base lg:text-lg text-gray-200 max-w-2xl mx-auto leading-relaxed px-2">
               Discover breathtaking trails, conquer majestic peaks, and create memories that last forever with fellow adventurers.
