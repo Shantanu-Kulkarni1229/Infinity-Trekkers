@@ -44,7 +44,7 @@ const EnquiryForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-sky-100 via-white to-sky-100 flex items-center justify-center p-4 sm:p-6">
+    <div id="enquiry-section" className="min-h-screen bg-gradient-to-r from-sky-100 via-white to-sky-100 flex items-center justify-center p-4 sm:p-6">
       <ToastContainer
         position="top-center"
         autoClose={5000}

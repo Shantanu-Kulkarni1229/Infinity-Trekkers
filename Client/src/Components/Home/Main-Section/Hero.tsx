@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
-import {  Mountain, Users, Award } from "lucide-react";
+import { Mountain, Users, Award } from "lucide-react";
 
 import trek1 from "../../../assets/Hero-Section/Main-hero.jpg";
 import { Link } from "react-router-dom";
@@ -23,7 +23,7 @@ const HeroSection = () => {
     return () => clearTimeout(timer);
   }, []);
 
- 
+
 
   return (
     <div className="relative w-full min-h-screen h-screen overflow-hidden bg-gray-900">
@@ -85,12 +85,17 @@ const HeroSection = () => {
               Start Adventure
             </Link>
 
-            <Link to='/gallery ' onClick={() => {
-
-              window.scrollTo(0, 0); // Scrolls to top
-            }} className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-medium text-base sm:text-lg rounded-full hover:bg-white/10 hover:border-white/50 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm min-w-[160px] sm:min-w-[180px]">
-              See Trek Moments
-            </Link>
+            <button
+              onClick={() => {
+                const enquirySection = document.getElementById("enquiry-section");
+                if (enquirySection) {
+                  enquirySection.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-medium text-base sm:text-lg rounded-full hover:bg-white/10 hover:border-white/50 transform hover:scale-105 transition-all duration-300 backdrop-blur-sm min-w-[160px] sm:min-w-[180px]"
+            >
+              Give Enquiry
+            </button>
           </div>
         </div>
 
@@ -110,7 +115,7 @@ const HeroSection = () => {
       </div>
 
       <div className="absolute bottom-6 sm:bottom-8 left-1/2 transform -translate-x-1/2 z-30 hidden sm:block">
-        
+
       </div>
 
       <div className="absolute bottom-4 sm:bottom-8 right-4 sm:right-8 z-30 flex space-x-2 sm:space-x-3">
