@@ -19,7 +19,8 @@ const app = express();
 // Middleware
 const allowedOrigins = [
   "http://localhost:5173", // local frontend
-  "https://infinitytrekkersindia.com" // production frontend (no trailing slash)
+  "https://infinitytrekkersindia.com" ,
+  "https://infinity-trekkers-r81t-admin.vercel.app"
 ];
 
 app.use(cors({
