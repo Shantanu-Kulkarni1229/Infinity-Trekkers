@@ -55,7 +55,7 @@ const Navbar: React.FC = () => {
 
   return (
     <header
-      className={`sticky top-0 z-50 shadow-lg bg-white/95 backdrop-blur-sm ${
+      className={`sticky top-0 z-50 shadow-lg bg-white backdrop-blur-sm ${
         isScrolled ? "py-2" : "py-3"
       } transition-[padding] duration-300 ease-in-out`}
     >
@@ -68,7 +68,7 @@ const Navbar: React.FC = () => {
             onClick={() => handleLinkClick("Home")}
             aria-label="Home"
           >
-            <div className="relative h-8 w-8 sm:h-18 sm:w-18 transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
+            <div className="relative h-8 w-8 sm:h-16 sm:w-16 transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6">
               <div className="relative flex items-center justify-center h-full w-full">
                 <img
                   src={logo}
@@ -102,7 +102,7 @@ const Navbar: React.FC = () => {
                     : "text-xs sm:text-sm hidden sm:block"
                 } transition-[font-size] duration-300`}
               >
-                Stay Beyond Limits
+               The world of Adventure
               </span>
             </div>
           </Link>
