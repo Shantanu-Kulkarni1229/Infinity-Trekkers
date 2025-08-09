@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const priceSchema = new mongoose.Schema({
   city: {
     type: String,
-    enum: ["Aurangabad", "Pune", "Mumbai"],
+    enum: ["Chh. Sambhajinagar", "Pune", "Mumbai"],
     
   },
   price: { type: Number, },
