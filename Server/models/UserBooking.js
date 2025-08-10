@@ -7,7 +7,7 @@ const userBookingSchema = new mongoose.Schema(
     phoneNumber: { type: String, required: true },
     city: {
       type: String,
-      enum: ["Aurangabad", "Pune", "Amarnagar"],
+      enum: ["Chh. Sambhajinagar", "Pune", "Amarnagar"],
       required: true
     },
     membersCount: { type: Number, required: true, min: 1 },

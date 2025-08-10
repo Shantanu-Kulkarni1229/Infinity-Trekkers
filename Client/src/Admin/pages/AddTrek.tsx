@@ -336,7 +336,7 @@ const AddTrek = () => {
                     Trek Description *
                   </label>
                   <textarea
-                    placeholder="Describe the trek experience, route, and what makes it special..."
+                    placeholder="Describe the trek experience, route, and what makes it special [MIN 20 words]..."
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={6}
