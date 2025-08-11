@@ -96,33 +96,33 @@ const TestimonialSection = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     const file = e.target.files[0];
       
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        addToast('warning', 'Please select an image smaller than 5MB.');
-        return;
-      }
+  //     // Validate file size (max 5MB)
+  //     if (file.size > 5 * 1024 * 1024) {
+  //       addToast('warning', 'Please select an image smaller than 5MB.');
+  //       return;
+  //     }
 
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        addToast('warning', 'Please select a valid image file.');
-        return;
-      }
+  //     // Validate file type
+  //     if (!file.type.startsWith('image/')) {
+  //       addToast('warning', 'Please select a valid image file.');
+  //       return;
+  //     }
 
-      setFormData({ ...formData, photo: file });
+  //     setFormData({ ...formData, photo: file });
       
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFormData(prev => ({ ...prev, photo: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
-      addToast('success', 'Image uploaded successfully!');
-    }
-  };
+  //     // Create preview URL
+  //     const reader = new FileReader();
+  //     reader.onload = () => {
+  //       setFormData(prev => ({ ...prev, photo: reader.result as string }));
+  //     };
+  //     reader.readAsDataURL(file);
+  //     addToast('success', 'Image uploaded successfully!');
+  //   }
+  // };
 
   const handleRating = (rating: number) => {
     setFormData({ ...formData, starRating: rating });
@@ -633,7 +633,7 @@ const TestimonialSection = () => {
                         </div>
                       </motion.div>
 
-                      <motion.div 
+                      {/* <motion.div 
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6 }}
@@ -660,7 +660,7 @@ const TestimonialSection = () => {
                             </div>
                           )}
                         </div>
-                      </motion.div>
+                      </motion.div> */}
 
                       <motion.button
                         type="submit"
