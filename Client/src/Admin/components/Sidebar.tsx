@@ -29,7 +29,10 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
   const navLinks = [
     { to: "/admin/dashboard/add", label: "Add Trek" },
     { to: "/admin/dashboard/manage", label: "Manage Treks" },
-    { to: "/admin/dashboard/bookings", label: "See Bookings" },
+    { to: "/admin/dashboard/bookings", label: "Trek Bookings" },
+    { to: "/admin/dashboard/add-tour", label: "Add Tour" },
+    { to: "/admin/dashboard/manage-tours", label: "Manage Tours" },
+    { to: "/admin/dashboard/tour-bookings", label: "Tour Bookings" },
     { to: "/admin/dashboard/enquiries", label: "See Enquiries" },
     { to: "/admin/dashboard/user-feedback", label: "See Feedbacks" },
   ];

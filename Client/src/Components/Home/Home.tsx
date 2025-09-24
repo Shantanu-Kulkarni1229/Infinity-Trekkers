@@ -1,6 +1,7 @@
 // src/App.tsx
 import HeroSection from "./Main-Section/Hero";
 import UpcomingTreks from "./Main-Section/UpComingTreks";
+import UpComingTours from "./Main-Section/UpComingTours";
 import Testimonials from "./Main-Section/Testomonial";
 import EnquiryForm from "./Main-Section/EnquiryForm";
 
@@ -10,6 +11,7 @@ function Home() {
       
       <HeroSection />
       <UpcomingTreks />
+      <UpComingTours />
       <EnquiryForm />
       <Testimonials />
       

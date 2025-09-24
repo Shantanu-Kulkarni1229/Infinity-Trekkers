@@ -11,6 +11,8 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { name: "Home", href: "/" },
   { name: "Upcoming Treks", href: "/upcoming-trek" },
+  { name: "Upcoming Tours", href: "/upcoming-tours" },
+  { name: "Our Other Services", href: "/services" },
   { name: "Gallery", href: "/gallery" },
   // { name: "Contact", href: "/contact" }
 ];

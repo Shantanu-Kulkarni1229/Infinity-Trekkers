@@ -49,6 +49,7 @@ app.use("/api/admin", adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/enquiries', UserEnquiryRoutes);
 app.use('/api/feedback', feedbackRoutes);
+
 // Sample Route
 app.get("/", (req, res) => {
   res.send("Infinity Trekkers Backend is running 🚀");

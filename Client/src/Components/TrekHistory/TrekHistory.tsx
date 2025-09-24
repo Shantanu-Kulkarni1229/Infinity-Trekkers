@@ -141,7 +141,7 @@ const TrekHistory = () => {
     }
   };
 
-  const renderHistorySection = (title: string, content: any, icon: React.ReactNode) => {
+  const renderHistorySection = (title: string, content: string | string[] | Record<string, string>, icon: React.ReactNode) => {
     if (!content) return null;
 
     const sectionKey = title.toLowerCase().replace(/\s+/g, '-');

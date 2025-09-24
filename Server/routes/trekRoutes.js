@@ -1,7 +1,8 @@
 import express from "express";
 import { addTrek, getTreks, getTrekById, updateTrek, deleteTrek, toggleTrekStatus } from "../controller/trekController.js";
 import { upload } from "../config/cloudinary.js";
-import { adminAuth } from "../middlewares/adminAuth.js";
+import adminAuth from "../middlewares/adminAuth.js";
+
 
 const router = express.Router();
 

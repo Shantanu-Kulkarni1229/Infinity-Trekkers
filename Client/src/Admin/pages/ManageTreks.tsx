@@ -23,6 +23,8 @@ const ManageTreks = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string>("");
   const [actionLoading, setActionLoading] = useState<string>("");
+  const [editingTrek, setEditingTrek] = useState<Trek | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Trek>>({});
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
   const headers = {
@@ -88,6 +90,81 @@ const ManageTreks = () => {
     }
   };
 
+  const handleEdit = (trek: Trek) => {
+    setEditingTrek(trek);
+    setEditForm({
+      name: trek.name,
+      location: trek.location,
+      duration: trek.duration,
+      difficulty: trek.difficulty,
+      startDate: trek.startDate.split('T')[0], // Format for date input
+      endDate: trek.endDate.split('T')[0],
+      thumbnail: trek.thumbnail,
+      isActive: trek.isActive
+    });
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingTrek || !editForm) return;
+    
+    // Basic validation
+    if (!editForm.name?.trim()) {
+      alert("Trek name is required");
+      return;
+    }
+    
+    if (!editForm.location?.trim()) {
+      alert("Location is required");
+      return;
+    }
+    
+    if (!editForm.duration?.trim()) {
+      alert("Duration is required");
+      return;
+    }
+    
+    if (!editForm.difficulty) {
+      alert("Difficulty level is required");
+      return;
+    }
+    
+    if (!editForm.startDate || !editForm.endDate) {
+      alert("Start and end dates are required");
+      return;
+    }
+    
+    if (new Date(editForm.startDate) >= new Date(editForm.endDate)) {
+      alert("End date must be after start date");
+      return;
+    }
+    
+    try {
+      setActionLoading(editingTrek._id);
+      await axios.put(`${API_BASE}/api/treks/${editingTrek._id}`, editForm, { headers });
+      
+      // Update the trek in the local state
+      setTreks((prev) =>
+        prev.map((trek) =>
+          trek._id === editingTrek._id ? { ...trek, ...editForm } : trek
+        )
+      );
+      
+      setEditingTrek(null);
+      setEditForm({});
+      alert("Trek updated successfully!");
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("Failed to update trek. Please try again.");
+    } finally {
+      setActionLoading("");
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingTrek(null);
+    setEditForm({});
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty.toLowerCase()) {
       case "easy": return "bg-green-100 text-green-800 border-green-200";
@@ -120,7 +197,7 @@ const ManageTreks = () => {
 
   useEffect(() => {
     fetchTreks();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -409,6 +486,16 @@ const ManageTreks = () => {
                     {/* Action Buttons */}
                     <div className={`flex gap-2 ${viewMode === "list" ? "flex-col" : ""}`}>
                       <button
+                        onClick={() => handleEdit(trek)}
+                        className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 border border-blue-200 font-medium text-sm transition-all duration-200 flex items-center gap-2 hover:scale-105"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Edit
+                      </button>
+                      
+                      <button
                         onClick={() => handleToggleStatus(trek._id)}
                         disabled={actionLoading === trek._id}
                         className={`
@@ -471,6 +558,172 @@ const ManageTreks = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingTrek && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Trek</h2>
+                <button
+                  onClick={handleEditCancel}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Trek Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Trek Name</label>
+                <input
+                  type="text"
+                  value={editForm.name || ""}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter trek name"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                <input
+                  type="text"
+                  value={editForm.location || ""}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter location"
+                />
+              </div>
+
+              {/* Duration and Difficulty */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                  <input
+                    type="text"
+                    value={editForm.duration || ""}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, duration: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 5 days"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
+                  <select
+                    value={editForm.difficulty || ""}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select difficulty</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Start and End Dates */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={editForm.startDate || ""}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={editForm.endDate || ""}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Thumbnail URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
+                <input
+                  type="url"
+                  value={editForm.thumbnail || ""}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, thumbnail: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter image URL"
+                />
+                {editForm.thumbnail && (
+                  <div className="mt-2">
+                    <img
+                      src={editForm.thumbnail}
+                      alt="Thumbnail preview"
+                      className="w-32 h-20 object-cover rounded-lg border border-gray-200"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isActive || false}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Active Trek</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={handleEditCancel}
+                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                disabled={actionLoading === editingTrek._id}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-2"
+              >
+                {actionLoading === editingTrek._id ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Update Trek
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
