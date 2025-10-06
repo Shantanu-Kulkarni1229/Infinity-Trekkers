@@ -321,7 +321,7 @@ const OurServices: React.FC = () => {
                 <div className="text-sm md:text-base text-blue-100">Destinations Covered</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold mb-2">15+</div>
+                <div className="text-3xl md:text-4xl font-bold mb-2">5+</div>
                 <div className="text-sm md:text-base text-blue-100">Years Experience</div>
               </div>
               <div className="text-center">
@@ -557,13 +557,14 @@ const OurServices: React.FC = () => {
               <div className={`w-10 h-10 bg-gradient-to-r ${COLOR_THEME.secondary.gradient} rounded-full flex items-center justify-center mr-3`}>
                 <span className="text-white font-bold">📞</span>
               </div>
-              <span className="text-gray-700 font-medium">+91 98765 43210</span>
+              <span className="text-gray-700 font-medium">+91 76668 69100</span>
             </div>
             <div className="flex items-center">
               <div className={`w-10 h-10 bg-gradient-to-r ${COLOR_THEME.accent.gradient} rounded-full flex items-center justify-center mr-3`}>
                 <span className="text-white font-bold">✉️</span>
               </div>
-              <span className="text-gray-700 font-medium">info@infinitytrekkers.com</span>
+              <span className="text-gray-700 font-medium">infinitytrekkersindia@gmail.com
+</span>
             </div>
           </div>
         </div>

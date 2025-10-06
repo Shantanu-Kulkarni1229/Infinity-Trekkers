@@ -13,9 +13,11 @@ import AddTrek from "./Admin/pages/AddTrek.js";
 import ManageTreks from "./Admin/pages/ManageTreks.js";
 import Bookings from "./Admin/pages/Bookings.js";
 import BookTrek from "./Components/Home/Main-Section/BookTrek.js";
+import BookTour from "./Components/Home/Main-Section/BookTour";
 
 import AdminEnquiries from "./Admin/pages/AdminEnquiries.js";
 import AdminFeedbackDashboard from "./Admin/pages/AdminFeedbackDashboard.js";
+import OfflineBooking from "./Admin/pages/OfflineBooking";
 
 
 function AppContent() {
@@ -35,6 +37,7 @@ function AppContent() {
         <Route path="/upcoming-tours" element={<UpComingToursPage />} />
         <Route path="/services" element={<OurServices />} />
         <Route path="/book/:trekId" element={<BookTrek />} />
+        <Route path="/book-tour/:tourId" element={<BookTour />} />
         <Route path="/gallery" element={<Gallery />} />
 
         {/* Admin Routes */}
@@ -48,6 +51,7 @@ function AppContent() {
           <Route path="add" element={<AddTrek />} />
           <Route path="manage" element={<ManageTreks />} />
           <Route path="bookings" element={<Bookings />} />
+          <Route path="offline-booking" element={<OfflineBooking />} />
           <Route path="enquiries" element={<AdminEnquiries />} />
           <Route path="user-feedback" element={<AdminFeedbackDashboard />} />
         </Route>

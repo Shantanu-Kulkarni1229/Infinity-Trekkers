@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
-import { MapPin, Users, Clock, Star, Filter, Search, ChevronDown } from "lucide-react";
+import { Filter, Search, ChevronDown } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -19,7 +19,7 @@ interface Tour {
     price: number;
     discountPrice?: number;
   }>;
-  highlights: string;
+  highlights: string[] | string; // Fixed: can be array or string
   rating: number;
   totalBookings: number;
   maxGroupSize: number;
@@ -36,6 +36,7 @@ const UpComingToursPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sortBy, setSortBy] = useState("createdAt");
   const [showFilters, setShowFilters] = useState(false);
@@ -48,28 +49,73 @@ const UpComingToursPage: React.FC = () => {
       setLoading(true);
       const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/tours?active=true&sortBy=${sortBy}&limit=50`);
       
-      if (response.data.success) {
-        setTours(response.data.data.tours);
-      } else {
-        toast.error("Failed to fetch tours");
+      // Handle different possible response structures safely
+      let toursData: Tour[] = [];
+      
+      if (response.data && typeof response.data === 'object') {
+        if (Array.isArray(response.data)) {
+          toursData = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          toursData = response.data.data;
+        } else if (response.data.data && response.data.data.tours && Array.isArray(response.data.data.tours)) {
+          toursData = response.data.data.tours;
+        } else if (response.data.tours && Array.isArray(response.data.tours)) {
+          toursData = response.data.tours;
+        }
+      }
+      
+      // Normalize highlights data to ensure consistent format
+      const normalizedTours = toursData.map(tour => ({
+        ...tour,
+        highlights: normalizeHighlights(tour.highlights)
+      }));
+      
+      setTours(normalizedTours);
+      
+      if (toursData.length === 0) {
+        console.log("No tours found in response:", response.data);
       }
     } catch (error) {
       console.error("Error fetching tours:", error);
       toast.error("Error fetching tours");
+      setTours([]);
     } finally {
       setLoading(false);
     }
   }, [sortBy]);
 
+  // Helper function to normalize highlights data
+  const normalizeHighlights = (highlights: string[] | string | undefined): string => {
+    if (!highlights) return '';
+    
+    if (Array.isArray(highlights)) {
+      return highlights.join(', ');
+    }
+    
+    if (typeof highlights === 'string') {
+      return highlights;
+    }
+    
+    return String(highlights);
+  };
+
   const filterTours = useCallback(() => {
-    let filtered = [...tours];
+    if (!Array.isArray(tours) || tours.length === 0) {
+      setFilteredTours([]);
+      return;
+    }
+
+    let filtered = tours.filter((tour): tour is Tour => 
+      tour && typeof tour === 'object' && typeof tour._id === 'string' && typeof tour.name === 'string'
+    );
 
     // Search filter
-    if (searchTerm) {
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
       filtered = filtered.filter(tour =>
-        tour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tour.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tour.description.toLowerCase().includes(searchTerm.toLowerCase())
+        tour.name?.toLowerCase().includes(term) ||
+        tour.location?.toLowerCase().includes(term) ||
+        tour.description?.toLowerCase().includes(term)
       );
     }
 
@@ -83,33 +129,67 @@ const UpComingToursPage: React.FC = () => {
       filtered = filtered.filter(tour => tour.difficulty === selectedDifficulty);
     }
 
+    // City filter
+    if (selectedCity) {
+      filtered = filtered.filter(tour => {
+        if (!Array.isArray(tour.cityPricing) || tour.cityPricing.length === 0) {
+          return false;
+        }
+        return tour.cityPricing.some(cp => cp.city === selectedCity);
+      });
+    }
+
     // Price range filter
     if (priceRange.min || priceRange.max) {
       filtered = filtered.filter(tour => {
-        const minPrice = Math.min(...tour.cityPricing.map(cp => cp.discountPrice || cp.price));
-        const maxPrice = Math.max(...tour.cityPricing.map(cp => cp.discountPrice || cp.price));
+        if (!Array.isArray(tour.cityPricing) || tour.cityPricing.length === 0) {
+          return false;
+        }
+        
+        const validPrices = tour.cityPricing
+          .map(cp => cp.discountPrice ?? cp.price)
+          .filter((price): price is number => typeof price === 'number' && !isNaN(price));
+        
+        if (validPrices.length === 0) return false;
+        
+        const minPrice = Math.min(...validPrices);
+        const maxPrice = Math.max(...validPrices);
         
         const min = priceRange.min ? parseInt(priceRange.min) : 0;
         const max = priceRange.max ? parseInt(priceRange.max) : Infinity;
+        
+        if (isNaN(min) || isNaN(max)) return true;
         
         return minPrice >= min && maxPrice <= max;
       });
     }
 
-    // Sort
+    // Sort tours
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.name.localeCompare(b.name);
+          return (a.name || '').localeCompare(b.name || '');
+        
         case 'price': {
-          const aPrice = Math.min(...a.cityPricing.map(cp => cp.discountPrice || cp.price));
-          const bPrice = Math.min(...b.cityPricing.map(cp => cp.discountPrice || cp.price));
-          return aPrice - bPrice;
+          const aPrices = Array.isArray(a.cityPricing) 
+            ? a.cityPricing.map(cp => cp.discountPrice ?? cp.price).filter((p): p is number => typeof p === 'number' && !isNaN(p))
+            : [];
+          const bPrices = Array.isArray(b.cityPricing) 
+            ? b.cityPricing.map(cp => cp.discountPrice ?? cp.price).filter((p): p is number => typeof p === 'number' && !isNaN(p))
+            : [];
+          
+          const aMinPrice = aPrices.length > 0 ? Math.min(...aPrices) : Infinity;
+          const bMinPrice = bPrices.length > 0 ? Math.min(...bPrices) : Infinity;
+          
+          return aMinPrice - bMinPrice;
         }
+        
         case 'rating':
-          return b.rating - a.rating;
+          return (b.rating || 0) - (a.rating || 0);
+        
         case 'popularity':
-          return b.totalBookings - a.totalBookings;
+          return (b.totalBookings || 0) - (a.totalBookings || 0);
+        
         default: {
           const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -119,7 +199,7 @@ const UpComingToursPage: React.FC = () => {
     });
 
     setFilteredTours(filtered);
-  }, [tours, searchTerm, selectedType, selectedDifficulty, priceRange, sortBy]);
+  }, [tours, searchTerm, selectedType, selectedDifficulty, selectedCity, priceRange, sortBy]);
 
   useEffect(() => {
     fetchTours();
@@ -129,10 +209,28 @@ const UpComingToursPage: React.FC = () => {
     filterTours();
   }, [filterTours]);
 
+  // Get unique cities from all tours
+  const getUniqueCities = () => {
+    const cities = new Set<string>();
+    tours.forEach(tour => {
+      if (tour.cityPricing && tour.cityPricing.length > 0) {
+        tour.cityPricing.forEach(cp => {
+          if (cp.city && cp.city.trim()) {
+            cities.add(cp.city.trim());
+          }
+        });
+      }
+    });
+    return Array.from(cities).sort();
+  };
+
+  const availableCities = getUniqueCities();
+
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedType("");
     setSelectedDifficulty("");
+    setSelectedCity("");
     setPriceRange({ min: "", max: "" });
     setSortBy("createdAt");
   };
@@ -147,7 +245,7 @@ const UpComingToursPage: React.FC = () => {
   };
 
   const getTypeColor = (type: string) => {
-    const colors: { [key: string]: string } = {
+    const colors: Record<string, string> = {
       'Adventure': 'text-orange-600 bg-orange-50',
       'Cultural': 'text-purple-600 bg-purple-50',
       'Wildlife': 'text-green-600 bg-green-50',
@@ -160,6 +258,21 @@ const UpComingToursPage: React.FC = () => {
       'Photography': 'text-pink-600 bg-pink-50'
     };
     return colors[type] || 'text-gray-600 bg-gray-50';
+  };
+
+  // Safe price calculation
+
+  // Render price function (same as trek card)
+  const renderPrice = (price: number, discountPrice?: number) => {
+    if (discountPrice) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400 line-through text-sm">₹{price}</span>
+          <span className="text-sky-600 font-bold text-lg">₹{discountPrice}</span>
+        </div>
+      );
+    }
+    return <span className="text-sky-600 font-bold text-lg">₹{price}</span>;
   };
 
   if (loading) {
@@ -215,7 +328,7 @@ const UpComingToursPage: React.FC = () => {
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
@@ -238,19 +351,32 @@ const UpComingToursPage: React.FC = () => {
                 ))}
               </select>
 
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Cities</option>
+                {availableCities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+
               <div className="flex gap-2">
                 <input
                   type="number"
                   placeholder="Min Price"
                   value={priceRange.min}
-                  onChange={(e) => setPriceRange({...priceRange, min: e.target.value})}
+                  onChange={(e) => setPriceRange(prev => ({...prev, min: e.target.value}))}
+                  min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
                 <input
                   type="number"
                   placeholder="Max Price"
                   value={priceRange.max}
-                  onChange={(e) => setPriceRange({...priceRange, max: e.target.value})}
+                  onChange={(e) => setPriceRange(prev => ({...prev, max: e.target.value}))}
+                  min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -269,7 +395,7 @@ const UpComingToursPage: React.FC = () => {
 
               <button
                 onClick={clearFilters}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors col-span-full md:col-span-1"
               >
                 Clear Filters
               </button>
@@ -297,98 +423,166 @@ const UpComingToursPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredTours.map((tour) => (
-              <div key={tour._id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="relative">
-                  <img
-                    src={tour.thumbnail || "/api/placeholder/400/250"}
-                    alt={tour.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  {tour.isFeatured && (
-                    <span className="absolute top-4 left-4 bg-yellow-500 text-white px-2 py-1 rounded-full text-sm font-semibold">
-                      Featured
-                    </span>
-                  )}
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(tour.tourType)}`}>
-                      {tour.tourType}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(tour.difficulty)}`}>
-                      {tour.difficulty}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{tour.name}</h3>
-                  
-                  <div className="flex items-center text-gray-600 mb-2">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    <span className="text-sm">{tour.location}</span>
-                  </div>
-
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {tour.duration}
-                    </div>
-                    <div className="flex items-center">
-                      <Users className="w-4 h-4 mr-1" />
-                      Max {tour.maxGroupSize}
-                    </div>
-                    {tour.rating > 0 && (
-                      <div className="flex items-center">
-                        <Star className="w-4 h-4 mr-1 text-yellow-500" />
-                        {tour.rating}
+            {filteredTours.map((tour, index) => {
+              const prices = tour.cityPricing?.map(cp => Number(cp.discountPrice || cp.price)) || [];
+              const minPrice = prices.length > 0 ? Math.min(...prices) : "N/A";
+              
+              return (
+                <div 
+                  key={tour._id} 
+                  className="group bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 md:hover:-translate-y-2 overflow-hidden border border-gray-100"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  {/* Image Container with Overlay */}
+                  <div className="relative overflow-hidden h-60 sm:h-72">
+                    {tour.isFeatured && (
+                      <div className="absolute top-4 right-4 z-10 bg-yellow-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                        ⭐ Featured
                       </div>
                     )}
+                    
+                    <img 
+                      src={tour.thumbnail || "/api/placeholder/400/300"}
+                      alt={tour.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='18' fill='%236b7280'%3ENo Image%3C/text%3E%3C/svg%3E";
+                      }}
+                    />
+                    
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    
+                    {/* Top badges */}
+                    <div className="absolute top-4 left-4 flex gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getTypeColor(tour.tourType)}`}>
+                        {tour.tourType}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getDifficultyColor(tour.difficulty)}`}>
+                        {tour.difficulty}
+                      </span>
+                    </div>
+
+                    {/* Bottom content overlay */}
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h2 className="text-lg sm:text-xl font-bold text-white mb-2 leading-tight">
+                        {tour.name}
+                      </h2>
+                      <div className="flex items-center text-white/90 text-xs sm:text-sm">
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {tour.location}
+                      </div>
+                    </div>
                   </div>
 
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                    {tour.description}
-                  </p>
-
-                  {tour.highlights && tour.highlights.trim() && (
-                    <div className="mb-4">
-                      <h4 className="font-semibold text-sm text-gray-800 mb-2">Highlights:</h4>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        {tour.highlights
-                          .split(',')
-                          .slice(0, 3)
-                          .map((highlight: string, index: number) => (
-                            <li key={index} className="flex items-start">
-                              <span className="text-blue-600 mr-2">•</span>
-                              {highlight.trim()}
-                            </li>
-                          ))}
-                      </ul>
+                  {/* Content */}
+                  <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                    {/* Tour Details Grid */}
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-50 rounded-lg flex items-center justify-center">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wide">Duration</div>
+                          <div className="font-semibold">{tour.duration}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                        <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-50 rounded-lg flex items-center justify-center">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-wide">Max Group</div>
+                          <div className="font-semibold">{tour.maxGroupSize || 'N/A'}</div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-2xl font-bold text-blue-600">
-                        ₹{Math.min(...tour.cityPricing.map(cp => cp.discountPrice || cp.price)).toLocaleString()}
-                      </p>
-                      <p className="text-sm text-gray-500">per person</p>
-                    </div>
-                    {tour.totalBookings > 0 && (
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">{tour.totalBookings} bookings</p>
+                    
+                    {/* City Pricing */}
+                    {tour.cityPricing && tour.cityPricing.filter(cp => cp.price !== null && cp.price !== undefined).length > 0 && (
+                      <div className="bg-gray-50 p-3 sm:p-4 rounded-xl border border-gray-100">
+                        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                          </svg>
+                          City-wise Pricing
+                        </h4>
+                        <div className="space-y-2">
+                          {tour.cityPricing
+                            .filter(cp => cp.price !== null && cp.price !== undefined)
+                            .map((cityPrice, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-xs sm:text-sm">
+                                <span className="font-medium text-gray-700">{cityPrice.city}</span>
+                                {renderPrice(cityPrice.price, cityPrice.discountPrice)}
+                              </div>
+                            ))}
+                        </div>
                       </div>
                     )}
+
+                    {/* Highlights */}
+                    {tour.highlights && (
+                      <div className="bg-gradient-to-r from-sky-50 to-teal-50 p-3 sm:p-4 rounded-xl border border-sky-100">
+                        <div className="flex items-center mb-2">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 mr-2 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span className="text-xs sm:text-sm font-semibold text-sky-800">Highlights</span>
+                        </div>
+                        <div className="text-xs sm:text-sm text-sky-700 max-w-none">
+                          {Array.isArray(tour.highlights) 
+                            ? tour.highlights.slice(0, 3).join(', ')
+                            : typeof tour.highlights === 'string' 
+                              ? tour.highlights.split(',').slice(0, 3).join(', ')
+                              : tour.highlights
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CTA Section */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between pt-3 sm:pt-4 border-t border-gray-100 gap-3 sm:gap-0">
+                      <div className="w-full sm:w-auto">
+                        <p className="text-[10px] sm:text-xs text-gray-500 uppercase tracking-wide font-semibold">Starting from</p>
+                        <div className="flex items-baseline gap-2">
+                          {minPrice !== "N/A" ? (
+                            <>
+                              <span className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">₹{minPrice}</span>
+                              <span className="text-xs sm:text-sm text-gray-500 ml-1">onwards</span>
+                            </>
+                          ) : (
+                            <span className="text-lg sm:text-xl font-bold text-gray-500">Price on request</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <Link
+                        to={`/book-tour/${tour._id}`}
+                        className="w-full sm:w-auto bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center justify-center group"
+                      >
+                        Book Now
+                        <svg className="w-3 h-3 sm:w-4 sm:h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </div>
                   </div>
 
-                  <Link
-                    to={`/book-tour/${tour._id}`}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 text-center block font-semibold"
-                  >
-                    Book Now
-                  </Link>
+                  {/* Hover Effect Overlay */}
+                  <div className="absolute inset-0 bg-sky-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

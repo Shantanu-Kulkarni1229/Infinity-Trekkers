@@ -20,25 +20,23 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
   };
 
   const baseClass =
-    "group flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-300 font-medium relative";
+    "group flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-300 font-medium relative text-sm";
   const activeClass =
     "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25";
-  const hoverClass =
-    "hover:bg-gray-800/50 hover:text-blue-300 hover:translate-x-1 hover:shadow-md";
+  const inactiveClass =
+    "text-gray-300 hover:bg-gray-800/50 hover:text-blue-300 hover:translate-x-1 hover:shadow-md";
 
   const navLinks = [
-    { to: "/admin/dashboard/add", label: "Add Trek" },
-    { to: "/admin/dashboard/manage", label: "Manage Treks" },
-    { to: "/admin/dashboard/bookings", label: "Trek Bookings" },
-    { to: "/admin/dashboard/add-tour", label: "Add Tour" },
-    { to: "/admin/dashboard/manage-tours", label: "Manage Tours" },
-    { to: "/admin/dashboard/tour-bookings", label: "Tour Bookings" },
-    { to: "/admin/dashboard/enquiries", label: "See Enquiries" },
-    { to: "/admin/dashboard/user-feedback", label: "See Feedbacks" },
+    { to: "/admin/dashboard/add", label: "Add Trek/Tour", icon: "➕" },
+    { to: "/admin/dashboard/manage", label: "Manage Treks/Tour", icon: "📊" },
+    { to: "/admin/dashboard/bookings", label: "Trek/Tour Bookings", icon: "📋" },
+    { to: "/admin/dashboard/offline-booking", label: "Add Offline Booking", icon: "💳" },
+    { to: "/admin/dashboard/enquiries", label: "See Enquiries", icon: "📩" },
+    { to: "/admin/dashboard/user-feedback", label: "See Feedbacks", icon: "⭐" },
   ];
 
   return (
-    <div className="w-64 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 text-white flex flex-col h-full">
+    <div className="w-64 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800 text-white flex flex-col h-full min-h-screen">
       {/* Header Section */}
       <div className="p-6 border-b border-gray-700/50">
         <div className="flex items-center gap-3 mb-2">
@@ -61,13 +59,13 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
             <h2 className="text-xl font-bold bg-gradient-to-r from-white to-blue-300 bg-clip-text text-transparent">
               Admin Panel
             </h2>
-            <p className="text-xs text-gray-400">Trek Management</p>
+            <p className="text-xs text-gray-400 mt-1">Trek Management</p>
           </div>
         </div>
       </div>
 
       {/* Navigation Section */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-4">
           Navigation
         </p>
@@ -79,14 +77,15 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
             end
             onClick={closeSidebar}
             className={({ isActive }) =>
-              `${baseClass} ${isActive ? activeClass : hoverClass}`
+              `${baseClass} ${isActive ? activeClass : inactiveClass}`
             }
           >
             {({ isActive }) => (
               <>
-                <span className="flex-1">{link.label}</span>
+                <span className="text-base">{link.icon}</span>
+                <span className="flex-1 truncate">{link.label}</span>
                 {isActive && (
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse flex-shrink-0"></div>
                 )}
               </>
             )}
@@ -94,7 +93,7 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
         ))}
 
         {/* Status Section */}
-        <div className="mt-8 p-4 bg-gray-800/30 rounded-xl border border-gray-700/30">
+        <div className="mt-6 p-4 bg-gray-800/30 rounded-xl border border-gray-700/30">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
             <span className="text-sm font-medium text-gray-300">
@@ -106,11 +105,24 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
       </nav>
 
       {/* Footer Section with Logout */}
-      <div className="p-4 border-t border-gray-700/50">
+      <div className="p-4 border-t border-gray-700/50 mt-auto">
+        {/* User Info */}
+        <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg mb-3">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold shadow-md">
+            A
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-200 truncate">Admin User</p>
+            <p className="text-xs text-gray-400 truncate">Administrator</p>
+          </div>
+          <div className="w-2 h-2 bg-green-400 rounded-full flex-shrink-0"></div>
+        </div>
+
+        {/* Logout Button */}
         <button
           onClick={logout}
           disabled={isLoggingOut}
-          className={`w-full group flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-300 font-medium ${
+          className={`w-full group flex items-center gap-3 py-3 px-4 rounded-xl transition-all duration-300 font-medium text-sm ${
             isLoggingOut
               ? "bg-red-600/20 text-red-300 cursor-not-allowed"
               : "text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:translate-x-1 hover:shadow-md"
@@ -121,7 +133,12 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
               isLoggingOut ? "animate-spin" : "group-hover:scale-110"
             }`}
           >
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+              className="w-5 h-5"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -130,22 +147,10 @@ const Sidebar: React.FC<SidebarProps> = ({ closeSidebar }) => {
               />
             </svg>
           </div>
-          <span className="flex-1 text-left">
+          <span className="flex-1 text-left truncate">
             {isLoggingOut ? "Logging out..." : "Logout"}
           </span>
         </button>
-
-        {/* User Info */}
-        <div className="mt-3 flex items-center gap-3 p-3 bg-gray-800/30 rounded-lg">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
-            A
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-200">Admin User</p>
-            <p className="text-xs text-gray-400">Administrator</p>
-          </div>
-          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-        </div>
       </div>
     </div>
   );

@@ -39,11 +39,28 @@ const userEnquirySchema = new mongoose.Schema({
     type: Date,
     validate: {
       validator: function (value) {
-        // Only allow future dates
-        return value > new Date();
+        // Only allow future dates if provided
+        return !value || value > new Date();
       },
       message: 'Preferred date must be in the future'
     }
+  },
+
+  // Additional service-specific fields
+  serviceNeeded: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Service needed cannot exceed 100 characters']
+  },
+  groupSize: {
+    type: String,
+    trim: true,
+    maxlength: [20, 'Group size cannot exceed 20 characters']
+  },
+  duration: {
+    type: String,
+    trim: true,
+    maxlength: [50, 'Duration cannot exceed 50 characters']
   },
 
   // System fields

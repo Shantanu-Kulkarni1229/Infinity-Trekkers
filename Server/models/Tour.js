@@ -4,7 +4,6 @@ const priceSchema = new mongoose.Schema({
   city: {
     type: String,
     enum: ["Chh. Sambhajinagar", "Pune", "Mumbai"],
-    
   },
   price: { 
     type: Number, 
@@ -14,13 +13,18 @@ const priceSchema = new mongoose.Schema({
   discountPrice: { type: Number, default: 0 },
 });
 
-const trekSchema = new mongoose.Schema(
+const tourSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     thumbnail: { type: String, required: true },
     description: { type: String, required: true, minlength: 20 },
     location: { type: String, required: true },
     duration: { type: String, required: true },
+    tourType: {
+      type: String,
+      enum: ["Adventure", "Cultural", "Wildlife", "Spiritual", "Heritage", "Beach", "Hill Station", "Desert", "Backwater", "Photography"],
+      default: "Adventure",
+    },
     difficulty: {
       type: String,
       enum: ["Easy", "Moderate", "Hard"],
@@ -29,9 +33,17 @@ const trekSchema = new mongoose.Schema(
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     highlights: { type: [String], default: [] },
+    inclusions: { type: [String], default: [] },
+    exclusions: { type: [String], default: [] },
+    itinerary: [{
+      day: { type: Number, required: true },
+      title: { type: String, required: true },
+      description: { type: String, required: true },
+      meals: { type: String, default: "" },
+      accommodation: { type: String, default: "" }
+    }],
     cityPricing: {
       type: [priceSchema],
-      
       validate: [
         {
           validator: function (value) {
@@ -42,11 +54,14 @@ const trekSchema = new mongoose.Schema(
         },
       ],
     },
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    totalBookings: { type: Number, default: 0 },
+    maxGroupSize: { type: Number, default: 20 },
     isActive: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-const Trek = mongoose.model("Trek", trekSchema);
-export default Trek;
+const Tour = mongoose.model("Tour", tourSchema);
+export default Tour;

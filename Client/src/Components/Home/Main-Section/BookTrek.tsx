@@ -72,6 +72,11 @@ const BookTrek = () => {
     return text.substring(0, limit) + "...";
   };
 
+  // Scroll to top when component loads
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     if (!trekId) return;
     const fetchTrek = async () => {
@@ -214,10 +219,8 @@ const BookTrek = () => {
                 toast.warning("Booking confirmed but failed to send confirmation email");
               }
               
-              // Redirect to home page after 3 seconds
-              setTimeout(() => {
-                navigate("/");
-              }, 3000);
+              // Redirect to home page immediately after payment success
+              navigate("/");
             } else {
               throw new Error(verifyData.message || "Payment verification failed");
             }
@@ -236,7 +239,6 @@ const BookTrek = () => {
         theme: { color: "#0284c7" },
       };
 
-      // @ts-ignore - Razorpay types not included
       new window.Razorpay(options).open();
     } catch (err) {
       console.error("Booking initiation failed:", err);

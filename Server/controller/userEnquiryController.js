@@ -15,7 +15,17 @@ export const createEnquiry = async (req, res) => {
       });
     }
 
-    const { destination, phoneNumber, email, name, message, preferredDate } = req.body;
+    const { 
+      destination, 
+      phoneNumber, 
+      email, 
+      name, 
+      message, 
+      preferredDate,
+      serviceNeeded,
+      groupSize,
+      duration
+    } = req.body;
 
     // Additional validation
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -33,6 +43,9 @@ export const createEnquiry = async (req, res) => {
       name: name || undefined,
       message: message || undefined,
       preferredDate: preferredDate ? new Date(preferredDate) : undefined,
+      serviceNeeded: serviceNeeded || undefined,
+      groupSize: groupSize || undefined,
+      duration: duration || undefined,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent')
     });
@@ -43,7 +56,7 @@ export const createEnquiry = async (req, res) => {
 const adminMailOptions = {
   from: `"Infinity Trekkers Enquiries" <${process.env.EMAIL_USER}>`,
   to: process.env.ADMIN_EMAIL,
-  subject: `🌄 New Trek Enquiry: ${destination.replace(/<[^>]*>/g, '')}`,
+  subject: `🌄 New ${serviceNeeded || 'Service'} Enquiry: ${destination.replace(/<[^>]*>/g, '')}`,
   html: `
 <!DOCTYPE html>
 <html>
@@ -233,7 +246,7 @@ const adminMailOptions = {
 <body>
     <div class="email-container">
         <div class="header">
-            <h1>New Trek Enquiry</h1>
+            <h1>New ${serviceNeeded || 'Service'} Enquiry</h1>
         </div>
         
         <div class="content">
@@ -263,6 +276,18 @@ const adminMailOptions = {
                             ${email}
                         </a>
                     </td>
+                </tr>` : ''}
+                ${serviceNeeded ? `<tr>
+                    <td style="font-weight: 600; color: #475569;">Service Needed</td>
+                    <td><span style="background-color: #e0f2fe; color: #0277bd; padding: 4px 8px; border-radius: 12px; font-weight: 500;">${serviceNeeded}</span></td>
+                </tr>` : ''}
+                ${groupSize ? `<tr>
+                    <td style="font-weight: 600; color: #475569;">Group Size</td>
+                    <td><strong>${groupSize}</strong> ${groupSize === 1 ? 'person' : 'people'}</td>
+                </tr>` : ''}
+                ${duration ? `<tr>
+                    <td style="font-weight: 600; color: #475569;">Duration</td>
+                    <td>${duration}</td>
                 </tr>` : ''}
                 ${preferredDate ? `<tr>
                     <td style="font-weight: 600; color: #475569;">Preferred Date</td>
@@ -320,7 +345,7 @@ const adminMailOptions = {
        await transporter.sendMail({
   from: `"Infinity Trekkers" <${process.env.EMAIL_USER}>`,
   to: email,
-  subject: "🌄 We've received your trek enquiry!",
+  subject: `🌄 We've received your ${serviceNeeded ? serviceNeeded.toLowerCase() : 'service'} enquiry!`,
   html: `
 <!DOCTYPE html>
 <html>
@@ -434,7 +459,7 @@ const adminMailOptions = {
         <div class="content">
             <p class="greeting">Dear ${name || 'Adventure Seeker'},</p>
             
-            <p>We're excited you're considering <strong>${destination}</strong> for your next adventure! Our team is reviewing your enquiry and will get back to you shortly.</p>
+            <p>We're excited you're considering <strong>${destination}</strong> for your next ${serviceNeeded ? serviceNeeded.toLowerCase() : 'adventure'}! Our team is reviewing your enquiry and will get back to you shortly.</p>
             
             <div class="summary-box">
                 <h3 class="summary-title">Your Enquiry Details</h3>
@@ -450,6 +475,18 @@ const adminMailOptions = {
                     <span class="detail-label">Email:</span>
                     ${email}
                 </div>` : ''}
+                ${serviceNeeded ? `<div class="detail-item">
+                    <span class="detail-label">Service Needed:</span>
+                    <strong style="color: #059669;">${serviceNeeded}</strong>
+                </div>` : ''}
+                ${groupSize ? `<div class="detail-item">
+                    <span class="detail-label">Group Size:</span>
+                    <strong>${groupSize}</strong> ${groupSize === 1 ? 'person' : 'people'}
+                </div>` : ''}
+                ${duration ? `<div class="detail-item">
+                    <span class="detail-label">Duration:</span>
+                    ${duration}
+                </div>` : ''}
                 ${preferredDate ? `<div class="detail-item">
                     <span class="detail-label">Preferred Date:</span>
                     ${new Date(preferredDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -461,7 +498,7 @@ const adminMailOptions = {
                 <a href="tel:${process.env.SUPPORT_PHONE}" class="support-phone">${process.env.SUPPORT_PHONE}</a></p>
             </div>
             
-            <p>We can't wait to help you plan your perfect trekking experience!</p>
+            <p>We can't wait to help you plan your perfect ${serviceNeeded ? serviceNeeded.toLowerCase() : 'adventure'} experience!</p>
             
             <p>Best regards,<br>
             <strong>The Infinity Trekkers Team</strong></p>

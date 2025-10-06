@@ -1,7 +1,13 @@
-import  { useEffect, useState } from "react";
+import  { useEffect, useState, useCallback, useMemo } from "react";
 import axios from "axios";
 
-type Trek = {
+type CityPricing = {
+  city: string;
+  price: number;
+  discountPrice?: number;
+};
+
+type Item = {
   _id: string;
   name: string;
   location: string;
@@ -11,75 +17,85 @@ type Trek = {
   endDate: string;
   isActive: boolean;
   thumbnail: string;
+  cityPricing?: CityPricing[];
+  type?: "trek" | "tour"; // Add type field for frontend identification
 };
 
 const ManageTreks = () => {
-  const [treks, setTreks] = useState<Trek[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string>("");
   const [actionLoading, setActionLoading] = useState<string>("");
-  const [editingTrek, setEditingTrek] = useState<Trek | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Trek>>({});
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Item>>({});
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
-  const headers = {
+  const headers = useMemo(() => ({
     "x-admin-key": localStorage.getItem("adminKey") || "",
-  };
+  }), []);
 
-  const fetchTreks = async () => {
+  const fetchItems = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/api/treks`, { headers });
-      const data = res.data;
+      
+      // Fetch both treks and tours
+      const [treksRes, toursRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/treks`, { headers }),
+        axios.get(`${API_BASE}/api/tours`, { headers })
+      ]);
 
-      if (Array.isArray(data)) {
-        setTreks(data);
-      } else if (Array.isArray(data.treks)) {
-        setTreks(data.treks);
-      } else if (Array.isArray(data.data)) {
-        setTreks(data.data);
-      } else {
-        throw new Error("Unexpected response format from API");
-      }
+      const treksData = treksRes.data.data || treksRes.data || [];
+      const toursData = toursRes.data.data || toursRes.data || [];
+
+      // Add type field to distinguish between treks and tours
+      const treksWithType = treksData.map((trek: Item) => ({ ...trek, type: "trek" as const }));
+      const toursWithType = toursData.map((tour: Item) => ({ ...tour, type: "tour" as const }));
+
+      // Combine both arrays
+      const allItems = [...treksWithType, ...toursWithType];
+      setItems(allItems);
       setError("");
     } catch (err) {
       console.error("Fetch error:", err);
-      setError("Failed to fetch treks. Please check your backend or network.");
+      setError("Failed to fetch treks and tours. Please check your backend or network.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE, headers]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, type: "trek" | "tour") => {
     try {
       setActionLoading(id);
-      await axios.delete(`${API_BASE}/api/treks/${id}`, { headers });
-      setTreks((prev) => prev.filter((trek) => trek._id !== id));
+      const endpoint = type === "trek" ? "treks" : "tours";
+      await axios.delete(`${API_BASE}/api/${endpoint}/${id}`, { headers });
+      setItems((prev) => prev.filter((item) => item._id !== id));
       setDeleteConfirmId("");
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Failed to delete trek.");
+      alert(`Failed to delete ${type}.`);
     } finally {
       setActionLoading("");
     }
   };
 
-  const handleToggleStatus = async (id: string) => {
+  const handleToggleStatus = async (id: string, type: "trek" | "tour") => {
     try {
       setActionLoading(id);
+      const endpoint = type === "trek" ? "treks" : "tours";
       await axios.patch(
-        `${API_BASE}/api/treks/toggle-status/${id}`,
+        `${API_BASE}/api/${endpoint}/toggle-status/${id}`,
         {},
         { headers }
       );
-      setTreks((prev) =>
-        prev.map((trek) =>
-          trek._id === id ? { ...trek, isActive: !trek.isActive } : trek
+      setItems((prev) =>
+        prev.map((item) =>
+          item._id === id ? { ...item, isActive: !item.isActive } : item
         )
       );
     } catch (err) {
@@ -90,26 +106,30 @@ const ManageTreks = () => {
     }
   };
 
-  const handleEdit = (trek: Trek) => {
-    setEditingTrek(trek);
+  const handleEdit = (item: Item) => {
+    setEditingItem(item);
     setEditForm({
-      name: trek.name,
-      location: trek.location,
-      duration: trek.duration,
-      difficulty: trek.difficulty,
-      startDate: trek.startDate.split('T')[0], // Format for date input
-      endDate: trek.endDate.split('T')[0],
-      thumbnail: trek.thumbnail,
-      isActive: trek.isActive
+      name: item.name,
+      location: item.location,
+      duration: item.duration,
+      difficulty: item.difficulty,
+      startDate: item.startDate.split('T')[0], // Format for date input
+      endDate: item.endDate.split('T')[0],
+      thumbnail: item.thumbnail,
+      isActive: item.isActive,
+      cityPricing: item.cityPricing || []
     });
   };
 
   const handleEditSubmit = async () => {
-    if (!editingTrek || !editForm) return;
+    if (!editingItem || !editForm) return;
+    
+    const itemType = editingItem.type;
+    const itemName = itemType === "trek" ? "Trek" : "Tour";
     
     // Basic validation
     if (!editForm.name?.trim()) {
-      alert("Trek name is required");
+      alert(`${itemName} name is required`);
       return;
     }
     
@@ -139,29 +159,30 @@ const ManageTreks = () => {
     }
     
     try {
-      setActionLoading(editingTrek._id);
-      await axios.put(`${API_BASE}/api/treks/${editingTrek._id}`, editForm, { headers });
+      setActionLoading(editingItem._id);
+      const endpoint = itemType === "trek" ? "treks" : "tours";
+      await axios.put(`${API_BASE}/api/${endpoint}/${editingItem._id}`, editForm, { headers });
       
-      // Update the trek in the local state
-      setTreks((prev) =>
-        prev.map((trek) =>
-          trek._id === editingTrek._id ? { ...trek, ...editForm } : trek
+      // Update the item in the local state
+      setItems((prev) =>
+        prev.map((item) =>
+          item._id === editingItem._id ? { ...item, ...editForm } : item
         )
       );
       
-      setEditingTrek(null);
+      setEditingItem(null);
       setEditForm({});
-      alert("Trek updated successfully!");
+      alert(`${itemName} updated successfully!`);
     } catch (err) {
       console.error("Update error:", err);
-      alert("Failed to update trek. Please try again.");
+      alert(`Failed to update ${itemName.toLowerCase()}. Please try again.`);
     } finally {
       setActionLoading("");
     }
   };
 
   const handleEditCancel = () => {
-    setEditingTrek(null);
+    setEditingItem(null);
     setEditForm({});
   };
 
@@ -183,21 +204,22 @@ const ManageTreks = () => {
     }
   };
 
-  const filteredTreks = treks.filter((trek) => {
-    const matchesSearch = trek.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         trek.location.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredItems = items.filter((item) => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || 
-                         (filterStatus === "active" && trek.isActive) ||
-                         (filterStatus === "inactive" && !trek.isActive);
+                         (filterStatus === "active" && item.isActive) ||
+                         (filterStatus === "inactive" && !item.isActive);
     const matchesDifficulty = filterDifficulty === "all" || 
-                             trek.difficulty.toLowerCase() === filterDifficulty.toLowerCase();
+                             item.difficulty.toLowerCase() === filterDifficulty.toLowerCase();
+    const matchesType = filterType === "all" || item.type === filterType;
     
-    return matchesSearch && matchesStatus && matchesDifficulty;
+    return matchesSearch && matchesStatus && matchesDifficulty && matchesType;
   });
 
   useEffect(() => {
-    fetchTreks();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchItems();
+  }, [fetchItems]);
 
   if (loading) {
     return (
@@ -225,10 +247,10 @@ const ManageTreks = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-red-800 font-semibold text-lg mb-2">Error Loading Treks</h3>
+            <h3 className="text-red-800 font-semibold text-lg mb-2">Error Loading Items</h3>
             <p className="text-red-600 mb-4">{error}</p>
             <button
-              onClick={fetchTreks}
+              onClick={fetchItems}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
             >
               Try Again
@@ -261,10 +283,10 @@ const ManageTreks = () => {
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-lg">{treks.length}</span>
+                  <span className="text-blue-600 font-bold text-lg">{items.length}</span>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Treks</p>
+                  <p className="text-sm text-gray-600">Total Items</p>
                   <p className="font-semibold text-gray-900">All Listings</p>
                 </div>
               </div>
@@ -273,10 +295,10 @@ const ManageTreks = () => {
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600 font-bold text-lg">{treks.filter(t => t.isActive).length}</span>
+                  <span className="text-green-600 font-bold text-lg">{items.filter(t => t.isActive).length}</span>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Active Treks</p>
+                  <p className="text-sm text-gray-600">Active Items</p>
                   <p className="font-semibold text-gray-900">Live Listings</p>
                 </div>
               </div>
@@ -285,10 +307,10 @@ const ManageTreks = () => {
             <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                  <span className="text-red-600 font-bold text-lg">{treks.filter(t => !t.isActive).length}</span>
+                  <span className="text-red-600 font-bold text-lg">{items.filter(t => !t.isActive).length}</span>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Inactive Treks</p>
+                  <p className="text-sm text-gray-600">Inactive Items</p>
                   <p className="font-semibold text-gray-900">Draft Listings</p>
                 </div>
               </div>
@@ -309,7 +331,7 @@ const ManageTreks = () => {
                   </div>
                   <input
                     type="text"
-                    placeholder="Search treks..."
+                    placeholder="Search treks & tours..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -337,6 +359,17 @@ const ManageTreks = () => {
                   <option value="easy">Easy</option>
                   <option value="moderate">Moderate</option>
                   <option value="hard">Hard</option>
+                </select>
+
+                {/* Type Filter */}
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value as "all" | "trek" | "tour")}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                >
+                  <option value="all">All Types</option>
+                  <option value="trek">Treks Only</option>
+                  <option value="tour">Tours Only</option>
                 </select>
               </div>
 
@@ -368,14 +401,14 @@ const ManageTreks = () => {
             {/* Results count */}
             <div className="mt-4 pt-4 border-t border-gray-100">
               <p className="text-sm text-gray-600">
-                Showing <span className="font-medium">{filteredTreks.length}</span> of <span className="font-medium">{treks.length}</span> treks
+                Showing <span className="font-medium">{filteredItems.length}</span> of <span className="font-medium">{items.length}</span> items
               </p>
             </div>
           </div>
         </div>
 
         {/* Trek Listings */}
-        {filteredTreks.length === 0 ? (
+        {filteredItems.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -406,8 +439,8 @@ const ManageTreks = () => {
             ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
             : "space-y-4"
           }>
-            {filteredTreks.map((trek) => (
-              <div key={trek._id} className={`
+            {filteredItems.map((item) => (
+              <div key={item._id} className={`
                 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group
                 ${viewMode === "list" ? "flex items-center" : ""}
               `}>
@@ -416,8 +449,8 @@ const ManageTreks = () => {
                   viewMode === "list" ? "w-48 h-32 flex-shrink-0" : "h-48"
                 }`}>
                   <img
-                    src={trek.thumbnail}
-                    alt={trek.name}
+                    src={item.thumbnail}
+                    alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNGM0Y0RjYiLz48cGF0aCBkPSJNMTAwIDgwQzEwNi42MjcgODAgMTEyIDg1LjM3MyAxMTIgOTJDMTEyIDk4LjYyNyAxMDYuNjI3IDEwNCAxMDAgMTA0Qzk5LjM3MyAxMDQgODggOTguNjI3IDg4IDkyQzg4IDg1LjM3MyA5My4zNzMgODAgMTAwIDgwWiIgZmlsbD0iIzlDQTNBRiIvPjxwYXRoIGQ9Ik0xNjggMTIwSDMyVjE2MEgxNjhWMTIwWiIgZmlsbD0iIzlDQTNBRiIvPjwvc3ZnPg==";
@@ -428,12 +461,12 @@ const ManageTreks = () => {
                   <div className="absolute top-3 left-3">
                     <span className={`
                       px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm
-                      ${trek.isActive 
+                      ${item.isActive 
                         ? 'bg-green-100/90 text-green-800 border border-green-200/50' 
                         : 'bg-red-100/90 text-red-800 border border-red-200/50'
                       }
                     `}>
-                      {trek.isActive ? "Active" : "Inactive"}
+                      {item.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
 
@@ -441,9 +474,9 @@ const ManageTreks = () => {
                   <div className="absolute top-3 right-3">
                     <span className={`
                       px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm border
-                      ${getDifficultyColor(trek.difficulty)}
+                      ${getDifficultyColor(item.difficulty)}
                     `}>
-                      {getDifficultyIcon(trek.difficulty)} {trek.difficulty}
+                      {getDifficultyIcon(item.difficulty)} {item.difficulty}
                     </span>
                   </div>
                 </div>
@@ -453,7 +486,7 @@ const ManageTreks = () => {
                   <div className={viewMode === "list" ? "flex items-start justify-between" : ""}>
                     <div className={viewMode === "list" ? "flex-1 pr-6" : ""}>
                       <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2" 
-                          dangerouslySetInnerHTML={{ __html: trek.name }}>
+                          dangerouslySetInnerHTML={{ __html: item.name }}>
                       </h3>
                       
                       <div className="space-y-2 mb-4">
@@ -462,14 +495,14 @@ const ManageTreks = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
-                          <span className="text-sm">{trek.location}</span>
+                          <span className="text-sm">{item.location}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-gray-600">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span className="text-sm">{trek.duration}</span>
+                          <span className="text-sm">{item.duration}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-gray-600">
@@ -477,7 +510,7 @@ const ManageTreks = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a1 1 0 011 1v9a2 2 0 01-2 2H7a2 2 0 01-2-2V8a1 1 0 011-1h2z" />
                           </svg>
                           <span className="text-sm">
-                            {new Date(trek.startDate).toLocaleDateString()} → {new Date(trek.endDate).toLocaleDateString()}
+                            {new Date(item.startDate).toLocaleDateString()} → {new Date(item.endDate).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
@@ -486,7 +519,7 @@ const ManageTreks = () => {
                     {/* Action Buttons */}
                     <div className={`flex gap-2 ${viewMode === "list" ? "flex-col" : ""}`}>
                       <button
-                        onClick={() => handleEdit(trek)}
+                        onClick={() => handleEdit(item)}
                         className="px-4 py-2 bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200 border border-blue-200 font-medium text-sm transition-all duration-200 flex items-center gap-2 hover:scale-105"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -496,18 +529,18 @@ const ManageTreks = () => {
                       </button>
                       
                       <button
-                        onClick={() => handleToggleStatus(trek._id)}
-                        disabled={actionLoading === trek._id}
+                        onClick={() => handleToggleStatus(item._id, item.type!)}
+                        disabled={actionLoading === item._id}
                         className={`
                           px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 flex items-center gap-2
-                          ${trek.isActive 
+                          ${item.isActive 
                             ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-200' 
                             : 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-200'
                           }
-                          ${actionLoading === trek._id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
+                          ${actionLoading === item._id ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
                         `}
                       >
-                        {actionLoading === trek._id ? (
+                        {actionLoading === item._id ? (
                           <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                           </svg>
@@ -516,17 +549,17 @@ const ManageTreks = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                           </svg>
                         )}
-                        {trek.isActive ? "Deactivate" : "Activate"}
+                        {item.isActive ? "Deactivate" : "Activate"}
                       </button>
                       
-                      {deleteConfirmId === trek._id ? (
+                      {deleteConfirmId === item._id ? (
                         <div className="flex gap-1">
                           <button
-                            onClick={() => handleDelete(trek._id)}
-                            disabled={actionLoading === trek._id}
+                            onClick={() => handleDelete(item._id, item.type!)}
+                            disabled={actionLoading === item._id}
                             className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium transition-all duration-200 flex items-center gap-1"
                           >
-                            {actionLoading === trek._id ? (
+                            {actionLoading === item._id ? (
                               <svg className="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                               </svg>
@@ -541,7 +574,7 @@ const ManageTreks = () => {
                         </div>
                       ) : (
                         <button
-                          onClick={() => setDeleteConfirmId(trek._id)}
+                          onClick={() => setDeleteConfirmId(item._id)}
                           className="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 border border-red-200 font-medium text-sm transition-all duration-200 flex items-center gap-2 hover:scale-105"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -560,12 +593,12 @@ const ManageTreks = () => {
       </div>
 
       {/* Edit Modal */}
-      {editingTrek && (
+      {editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">Edit Trek</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Edit {editingItem.type === "trek" ? "Trek" : "Tour"}</h2>
                 <button
                   onClick={handleEditCancel}
                   className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -689,6 +722,88 @@ const ManageTreks = () => {
                   <span className="text-sm font-medium text-gray-700">Active Trek</span>
                 </label>
               </div>
+
+              {/* City Pricing */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City Pricing</label>
+                <div className="space-y-3">
+                  {editForm.cityPricing && editForm.cityPricing.length > 0 ? (
+                    editForm.cityPricing.map((cityPrice, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={cityPrice.city}
+                            onChange={(e) => {
+                              const newCityPricing = [...(editForm.cityPricing || [])];
+                              newCityPricing[index] = { ...newCityPricing[index], city: e.target.value };
+                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="City name"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            value={cityPrice.price}
+                            onChange={(e) => {
+                              const newCityPricing = [...(editForm.cityPricing || [])];
+                              newCityPricing[index] = { ...newCityPricing[index], price: parseInt(e.target.value) || 0 };
+                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Price"
+                            min="0"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            type="number"
+                            value={cityPrice.discountPrice || ""}
+                            onChange={(e) => {
+                              const newCityPricing = [...(editForm.cityPricing || [])];
+                              newCityPricing[index] = { ...newCityPricing[index], discountPrice: e.target.value ? parseInt(e.target.value) : undefined };
+                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Discount price"
+                            min="0"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newCityPricing = editForm.cityPricing?.filter((_, i) => i !== index) || [];
+                            setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                          }}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500 text-sm">No city pricing data available</div>
+                  )}
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newCityPricing = [...(editForm.cityPricing || []), { city: "", price: 0, discountPrice: undefined }];
+                      setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                    }}
+                    className="w-full px-4 py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add City Pricing
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Modal Footer */}
@@ -701,10 +816,10 @@ const ManageTreks = () => {
               </button>
               <button
                 onClick={handleEditSubmit}
-                disabled={actionLoading === editingTrek._id}
+                disabled={actionLoading === editingItem._id}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-2"
               >
-                {actionLoading === editingTrek._id ? (
+                {actionLoading === editingItem._id ? (
                   <>
                     <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

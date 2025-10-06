@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ChangeEvent } from "react";
 import axios, { type AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
 
-type TrekForm = {
+type ItemForm = {
   name: string;
   description: string;
   location: string;
@@ -23,7 +23,7 @@ const cities = ["Chh. Sambhajinagar", "Pune", "Mumbai"] as const;
 const difficulties = ["Easy", "Moderate", "Hard"] as const;
 
 const AddTrek = () => {
-  const [form, setForm] = useState<TrekForm>({
+  const [form, setForm] = useState<ItemForm>({
     name: "",
     description: "",
     location: "",
@@ -34,6 +34,7 @@ const AddTrek = () => {
     highlights: "",
   });
 
+  const [itemType, setItemType] = useState<"trek" | "tour">("trek");
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
   const [cityPricing, setCityPricing] = useState<CityPricing[]>(
@@ -65,6 +66,14 @@ const AddTrek = () => {
       return;
     }
 
+    // Validate that at least one city has pricing
+    const citiesWithPricing = cityPricing.filter(cp => cp.price && cp.price !== "" && parseFloat(cp.price) > 0);
+    if (citiesWithPricing.length === 0) {
+      setError(`At least one city must have confirmed pricing for the ${itemType} to be available`);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const fd = new FormData();
       fd.append("name", form.name);
@@ -78,8 +87,9 @@ const AddTrek = () => {
       fd.append("cityPricing", JSON.stringify(cityPricing));
       fd.append("thumbnail", thumbnail);
 
+      const endpoint = itemType === "trek" ? "treks" : "tours";
       await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/api/treks/add`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/${endpoint}/add`,
         fd,
         {
           headers: {
@@ -91,7 +101,7 @@ const AddTrek = () => {
 
       // Success feedback
       setError("");
-      alert("Trek added successfully!");
+      alert(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} added successfully!`);
       navigate("/admin/dashboard/manage");
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
@@ -150,8 +160,8 @@ const AddTrek = () => {
               </svg>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Add New Trek</h1>
-              <p className="text-gray-600 mt-1">Create an amazing trek experience for adventurers</p>
+              <h1 className="text-3xl font-bold text-gray-900">Add New {itemType.charAt(0).toUpperCase() + itemType.slice(1)}</h1>
+              <p className="text-gray-600 mt-1">Create an amazing {itemType} experience for adventurers</p>
             </div>
           </div>
 
@@ -205,14 +215,36 @@ const AddTrek = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Trek Name */}
+                {/* Item Type Selection */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Trek Title *
+                    Type *
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={itemType}
+                      onChange={(e) => setItemType(e.target.value as "trek" | "tour")}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                    >
+                      <option value="trek">🏔️ Trek</option>
+                      <option value="tour">🚌 Tour</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Item Name */}
+                <div className="lg:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Title *
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter trek title"
+                    placeholder={`Enter ${itemType} title`}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -234,7 +266,7 @@ const AddTrek = () => {
                     </div>
                     <input
                       type="text"
-                      placeholder="Enter trek location"
+                      placeholder={`Enter ${itemType} location`}
                       value={form.location}
                       onChange={(e) => setForm({ ...form, location: e.target.value })}
                       className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -324,19 +356,19 @@ const AddTrek = () => {
             <div className="p-6 sm:p-8 border-b border-gray-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">🏔️</span>
+                  <span className="text-lg">{itemType === "trek" ? "🏔️" : "🚌"}</span>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Trek Details</h2>
+                <h2 className="text-xl font-semibold text-gray-900">{itemType.charAt(0).toUpperCase() + itemType.slice(1)} Details</h2>
               </div>
 
               <div className="space-y-6">
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Trek Description *
+                    {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Description *
                   </label>
                   <textarea
-                    placeholder="Describe the trek experience, route, and what makes it special [MIN 20 words]..."
+                    placeholder={`Describe the ${itemType} experience, route, and what makes it special [MIN 20 words]...`}
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
                     rows={6}
@@ -348,10 +380,10 @@ const AddTrek = () => {
                 {/* Highlights */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Trek Highlights *
+                    {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Highlights *
                   </label>
                   <textarea
-                    placeholder="List the key highlights and attractions of this trek..."
+                    placeholder={`List the key highlights and attractions of this ${itemType}...`}
                     value={form.highlights}
                     onChange={(e) => setForm({ ...form, highlights: e.target.value })}
                     rows={4}
@@ -368,48 +400,71 @@ const AddTrek = () => {
                 <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                   <span className="text-lg">💰</span>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">City Pricing</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Departure Cities & Pricing</h2>
+                  <p className="text-sm text-gray-600 mt-1">Only cities with confirmed prices will be available for booking</p>
+                  <p className="text-xs text-amber-600 mt-1">⚠️ Leave empty if {itemType} doesn't operate from that city</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {cityPricing.map((cp, index) => (
-                  <div key={cp.city} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div key={cp.city} className={`rounded-xl p-4 border transition-all duration-200 ${
+                    cp.price && cp.price !== "" ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                  }`}>
                     <div className="flex items-center gap-2 mb-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-blue-600">{cp.city[0]}</span>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                        cp.price && cp.price !== "" ? 'bg-green-100' : 'bg-red-100'
+                      }`}>
+                        <span className={`text-xs font-bold ${
+                          cp.price && cp.price !== "" ? 'text-green-600' : 'text-red-600'
+                        }`}>{cp.city[0]}</span>
                       </div>
                       <h3 className="font-medium text-gray-900">{cp.city}</h3>
+                      <span className={`ml-auto text-xs px-2 py-1 rounded-full ${
+                        cp.price && cp.price !== "" 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {cp.price && cp.price !== "" ? '✓ Active' : '✗ Disabled'}
+                      </span>
                     </div>
                     
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Regular Price *
+                          Regular Price 
+                          <span className="text-xs text-red-500 ml-1">*</span>
                         </label>
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span>
                           <input
                             type="number"
-                            placeholder="0"
+                            placeholder="Enter price to enable this city"
                             value={cp.price}
                             onChange={(e) =>
                               handlePricingChange(index, "price", e.target.value)
                             }
                             className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            required
                           />
                         </div>
+                        {!cp.price || cp.price === "" ? (
+                          <p className="text-xs text-gray-500 mt-1">This city will not be available for booking</p>
+                        ) : (
+                          <p className="text-xs text-green-600 mt-1">✓ Available for booking</p>
+                        )}
                       </div>
                       
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           Discount Price
+                          <span className="text-xs text-gray-400 ml-1">(Optional)</span>
                         </label>
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">₹</span>
                           <input
                             type="number"
-                            placeholder="0"
+                            placeholder="Leave empty for no discount"
                             value={cp.discountPrice}
                             onChange={(e) =>
                               handlePricingChange(index, "discountPrice", e.target.value)
@@ -435,7 +490,7 @@ const AddTrek = () => {
 
               <div className="space-y-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Trek Thumbnail *
+                  {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Thumbnail *
                 </label>
                 
                 {!thumbnailPreview ? (
@@ -499,14 +554,14 @@ const AddTrek = () => {
                   <svg className="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Adding Trek...
+                  Adding {itemType.charAt(0).toUpperCase() + itemType.slice(1)}...
                 </>
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
-                  Add Trek
+                  Add {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
                 </>
               )}
             </button>

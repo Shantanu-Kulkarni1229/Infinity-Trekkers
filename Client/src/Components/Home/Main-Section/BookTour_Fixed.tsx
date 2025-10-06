@@ -45,7 +45,7 @@ interface Tour {
   duration: string;
   difficulty: string;
   tourType: string;
-  highlights: string | string[];
+  highlights: string;
   inclusions: string[];
   exclusions: string[];
   itinerary: Array<{
@@ -72,170 +72,120 @@ interface CityPricing {
 interface BookingFormData {
   name: string;
   email: string;
-  phoneNumber: string;
+  phone: string;
   city: string;
-  membersCount: number;
+  members: number;
 }
 
-const BookTour = () => {
+const BookTour: React.FC = () => {
   const { tourId } = useParams<{ tourId: string }>();
+  const navigate = useNavigate();
+  
   const [tour, setTour] = useState<Tour | null>(null);
   const [departureCities, setDepartureCities] = useState<string[]>([]);
-  const [finalPrice, setFinalPrice] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [bookingProcessing, setBookingProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [bookingProcessing, setBookingProcessing] = useState<boolean>(false);
+  
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
   const [isHighlightsExpanded, setIsHighlightsExpanded] = useState<boolean>(false);
+  const [isItineraryExpanded, setIsItineraryExpanded] = useState<boolean>(false);
+  
+  const [formData, setFormData] = useState<BookingFormData>({
+    name: "",
+    email: "",
+    phone: "",
+    city: "",
+    members: 1,
+  });
 
-  const navigate = useNavigate();
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  // Helper function to remove HTML tags
+  const stripHtmlTags = (html: string): string => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  };
+
+  // Helper function to check if text needs "Read More"
+  const shouldShowReadMore = (text: string, limit: number = 150): boolean => {
+    return text.length > limit;
+  };
+
+  // Helper function to truncate text
+  const truncateText = (text: string, limit: number = 150): string => {
+    if (text.length <= limit) return text;
+    return text.substring(0, limit) + "...";
+  };
 
   // Scroll to top when component loads
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Load Razorpay script
   useEffect(() => {
-    const loadRazorpayScript = () => {
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      document.body.appendChild(script);
-    };
-
-    if (!window.Razorpay) {
-      loadRazorpayScript();
-    }
-  }, []);
-
-  const [formData, setFormData] = useState<BookingFormData>({
-    name: "",
-    email: "",
-    phoneNumber: "",
-    city: "",
-    membersCount: 1
-  });
-
-  // Fetch tour details
-  useEffect(() => {
-    const fetchTourDetails = async () => {
+    if (!tourId) return;
+    const fetchTour = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/tours/${tourId}`);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-
+        const res = await fetch(`${API_BASE}/api/tours/${tourId}`);
+        const data = await res.json();
         if (data.success) {
-          const tourData = data.data as Tour;
-          
-          if (!tourData) {
-            setError("Tour data not found");
-            toast.error("Tour data not found");
-            return;
-          }
-          
-          setTour(tourData);
-          
-          const cities = tourData.cityPricing ? 
-            [...new Set(tourData.cityPricing.map(cp => cp.city))] : [];
-          setDepartureCities(cities);
-          
-          if (tourData.cityPricing && tourData.cityPricing.length > 0) {
-            const firstCity = tourData.cityPricing[0];
-            setFinalPrice(firstCity.discountPrice || firstCity.price);
-          }
+          setTour(data.data.tour);
+          setDepartureCities(data.data.departureCities || []);
+          toast.success("Tour details loaded successfully!");
         } else {
-          setError("Tour not found");
-          toast.error("Tour not found");
+          throw new Error(data.message || "Failed to fetch tour");
         }
-      } catch (error) {
-        console.error("Error fetching tour:", error);
-        setError("Failed to load tour details");
-        toast.error("Failed to load tour details");
+      } catch (err) {
+        console.error("Error fetching tour details:", err);
+        setError("Failed to load tour details. Please try again.");
+        toast.error("Failed to load tour details. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (tourId) {
-      fetchTourDetails();
-    }
-  }, [tourId]);
+    fetchTour();
+  }, [tourId, API_BASE]);
 
-  // Calculate price when departure city or members count changes
-  useEffect(() => {
-    if (tour && formData.city) {
-      const cityPricing = tour.cityPricing?.find(cp => cp.city === formData.city);
-      if (cityPricing) {
-        const pricePerPerson = cityPricing.discountPrice || cityPricing.price;
-        const baseAmount = pricePerPerson * formData.membersCount;
-        setFinalPrice(baseAmount);
-      }
-    }
-  }, [formData.city, formData.membersCount, tour]);
-
-  const handleInputChange = (field: keyof BookingFormData, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prevState => ({
+      ...prevState,
+      [name]: type === "number" ? Number(value) : value
     }));
   };
 
-  const validateForm = (): boolean => {
-    if (!formData.name.trim()) {
-      toast.error("Name is required");
-      return false;
-    }
-    if (!formData.email.trim() || !formData.email.includes("@")) {
-      toast.error("Valid email is required");
-      return false;
-    }
-    if (!formData.phoneNumber.trim() || formData.phoneNumber.length !== 10) {
-      toast.error("Valid 10-digit phone number is required");
-      return false;
-    }
-    if (!formData.city) {
-      toast.error("Departure city is required");
-      return false;
-    }
-    if (formData.membersCount < 1 || formData.membersCount > 20) {
-      toast.error("Members count must be between 1 and 20");
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!tour) return;
+    
+    const selectedCityPricing = tour.cityPricing.find(cp => cp.city === formData.city);
+    if (!selectedCityPricing) {
+      toast.error("Please select a valid city");
       return;
     }
 
-    if (!tour) {
-      toast.error("Tour information not available");
-      return;
-    }
-
+    const finalPrice = (selectedCityPricing.discountPrice || selectedCityPricing.price) * formData.members;
+    
     setBookingProcessing(true);
-
+    
     try {
       const bookingData = {
         tourId: tour._id,
-        name: formData.name,
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
-        city: formData.city,
-        membersCount: formData.membersCount
+        tourName: tour.name,
+        userName: formData.name,
+        userEmail: formData.email,
+        userPhone: formData.phone,
+        departureCity: formData.city,
+        members: formData.members,
+        totalAmount: finalPrice,
+        bookingType: "tour"
       };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/universal-bookings/book`, {
+      const response = await fetch(`${API_BASE}/api/universal-bookings/book`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -246,48 +196,48 @@ const BookTour = () => {
       const data = await response.json();
 
       if (data.success) {
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: data.data.order.amount,
-          currency: data.data.order.currency,
+        // Initialize Razorpay
+        const options: RazorpayOptions = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "",
+          amount: finalPrice * 100,
+          currency: "INR",
           name: "Infinity Trekkers",
           description: `Tour Booking - ${tour.name}`,
-          order_id: data.data.order.id,
-          handler: async function (response: RazorpayResponse) {
+          order_id: data.data.razorpayOrderId,
+          handler: async (response: RazorpayResponse) => {
             try {
-              const verifyResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/universal-bookings/verify-payment`, {
+              const verifyResponse = await fetch(`${API_BASE}/api/universal-bookings/verify-payment`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
                   bookingId: data.data.bookingId
                 }),
               });
 
               const verifyData = await verifyResponse.json();
-
               if (verifyData.success) {
-                toast.success("Payment successful! Tour booked successfully.");
+                toast.success("Payment successful! Booking confirmed.");
                 navigate("/");
               } else {
-                toast.error("Payment verification failed");
+                toast.error("Payment verification failed. Please contact support.");
               }
             } catch (error) {
               console.error("Payment verification error:", error);
-              toast.error("Payment verification failed");
+              toast.error("Payment verification failed. Please contact support.");
             }
           },
           prefill: {
             name: formData.name,
             email: formData.email,
-            contact: formData.phoneNumber,
+            contact: formData.phone,
           },
           theme: {
-            color: "#2563eb",
+            color: "#0ea5e9",
           },
         };
 
@@ -304,37 +254,33 @@ const BookTour = () => {
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'Easy': return 'text-green-600 bg-green-50 border-green-200';
-      case 'Moderate': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'Hard': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
   const getTypeColor = (type: string) => {
     const colors: { [key: string]: string } = {
-      'Adventure': 'text-orange-600 bg-orange-50 border-orange-200',
-      'Cultural': 'text-purple-600 bg-purple-50 border-purple-200',
-      'Wildlife': 'text-green-600 bg-green-50 border-green-200',
-      'Spiritual': 'text-blue-600 bg-blue-50 border-blue-200',
-      'Heritage': 'text-amber-600 bg-amber-50 border-amber-200',
-      'Beach': 'text-cyan-600 bg-cyan-50 border-cyan-200',
-      'Hill Station': 'text-emerald-600 bg-emerald-50 border-emerald-200',
-      'Desert': 'text-yellow-600 bg-yellow-50 border-yellow-200',
-      'Backwater': 'text-teal-600 bg-teal-50 border-teal-200',
-      'Photography': 'text-pink-600 bg-pink-50 border-pink-200'
+      "Adventure": "border-orange-300 bg-orange-50 text-orange-700",
+      "Cultural": "border-purple-300 bg-purple-50 text-purple-700", 
+      "Wildlife": "border-green-300 bg-green-50 text-green-700",
+      "Spiritual": "border-blue-300 bg-blue-50 text-blue-700",
+      "Beach": "border-cyan-300 bg-cyan-50 text-cyan-700"
     };
-    return colors[type] || 'text-gray-600 bg-gray-50 border-gray-200';
+    return colors[type] || "border-gray-300 bg-gray-50 text-gray-700";
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    const colors: { [key: string]: string } = {
+      "Easy": "border-green-300 bg-green-50 text-green-700",
+      "Moderate": "border-yellow-300 bg-yellow-50 text-yellow-700",
+      "Challenging": "border-orange-300 bg-orange-50 text-orange-700",
+      "Difficult": "border-red-300 bg-red-50 text-red-700"
+    };
+    return colors[difficulty] || "border-gray-300 bg-gray-50 text-gray-700";
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading tour details...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading tour details...</p>
         </div>
       </div>
     );
@@ -356,6 +302,9 @@ const BookTour = () => {
       </div>
     );
   }
+
+  const selectedCityPricing = tour.cityPricing.find(cp => cp.city === formData.city);
+  const finalPrice = selectedCityPricing ? ((selectedCityPricing.discountPrice || selectedCityPricing.price) * formData.members) : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 py-8">
@@ -411,54 +360,42 @@ const BookTour = () => {
               {/* Description */}
               <div className="bg-gray-50 p-6 rounded-lg">
                 <h3 className="text-xl font-bold mb-4">About This Tour</h3>
-                <div className={`text-gray-700 ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
-                  {tour.description}
+                <div className="text-gray-700">
+                  {shouldShowReadMore(stripHtmlTags(tour.description)) ? (
+                    <>
+                      {isDescriptionExpanded ? stripHtmlTags(tour.description) : truncateText(stripHtmlTags(tour.description))}
+                      <button
+                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                        className="ml-2 text-blue-600 hover:text-blue-700 font-medium underline focus:outline-none"
+                      >
+                        {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                      </button>
+                    </>
+                  ) : (
+                    stripHtmlTags(tour.description)
+                  )}
                 </div>
-                <button
-                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                  className="mt-2 text-blue-600 hover:text-blue-800 font-medium flex items-center"
-                >
-                  {isDescriptionExpanded ? 'Show Less' : 'Show More'}
-                  {isDescriptionExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
-                </button>
               </div>
 
               {/* Highlights */}
-              {(() => {
-                const highlightsArray = Array.isArray(tour.highlights) 
-                  ? tour.highlights 
-                  : typeof tour.highlights === 'string' 
-                    ? tour.highlights.split(',').map(h => h.trim()).filter(h => h)
-                    : [];
-                
-                if (highlightsArray.length === 0) return null;
-
-                return (
-                  <div className="bg-blue-50 p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4 text-blue-800">Tour Highlights</h3>
-                    <ul className="space-y-2">
-                      {(isHighlightsExpanded 
-                        ? highlightsArray 
-                        : highlightsArray.slice(0, 4)
-                      ).map((highlight: string, index: number) => (
-                        <li key={index} className="flex items-start text-blue-700">
-                          <span className="text-blue-500 mr-2 mt-1">•</span>
-                          {highlight}
-                        </li>
-                      ))}
-                    </ul>
-                    {highlightsArray.length > 4 && (
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h3 className="text-xl font-bold mb-4">Highlights</h3>
+                <div className="text-gray-700">
+                  {shouldShowReadMore(stripHtmlTags(tour.highlights)) ? (
+                    <>
+                      {isHighlightsExpanded ? stripHtmlTags(tour.highlights) : truncateText(stripHtmlTags(tour.highlights))}
                       <button
                         onClick={() => setIsHighlightsExpanded(!isHighlightsExpanded)}
-                        className="mt-2 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                        className="ml-2 text-blue-600 hover:text-blue-700 font-medium underline focus:outline-none"
                       >
-                        {isHighlightsExpanded ? 'Show Less' : `Show ${highlightsArray.length - 4} More`}
-                        {isHighlightsExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                        {isHighlightsExpanded ? 'Read Less' : 'Read More'}
                       </button>
-                    )}
-                  </div>
-                );
-              })()}
+                    </>
+                  ) : (
+                    stripHtmlTags(tour.highlights)
+                  )}
+                </div>
+              </div>
 
               {/* Inclusions/Exclusions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -494,22 +431,33 @@ const BookTour = () => {
               {/* Itinerary */}
               {tour.itinerary && tour.itinerary.length > 0 && (
                 <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-4">Itinerary</h3>
-                  <div className="space-y-4">
-                    {tour.itinerary.map((day, index) => (
-                      <div key={index} className="border-l-4 border-blue-500 pl-4">
-                        <h4 className="font-bold text-lg text-gray-800">Day {day.day}: {day.title}</h4>
-                        <p className="text-gray-600 mt-1">{day.description}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold">Itinerary</h3>
+                    <button
+                      onClick={() => setIsItineraryExpanded(!isItineraryExpanded)}
+                      className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                    >
+                      {isItineraryExpanded ? 'Hide' : 'Show'} Details
+                      {isItineraryExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                    </button>
                   </div>
+                  {isItineraryExpanded && (
+                    <div className="space-y-4">
+                      {tour.itinerary.map((day, index) => (
+                        <div key={index} className="border-l-4 border-blue-200 pl-4">
+                          <h4 className="font-semibold text-gray-800">Day {day.day}: {day.title}</h4>
+                          <p className="text-gray-600 text-sm mt-1">{day.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Booking Form */}
             <div className="lg:col-span-4 order-1 lg:order-2">
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 relative overflow-hidden">
+              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 sticky top-4 lg:top-6 overflow-hidden">
                 <div className="absolute top-0 left-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-100 to-transparent rounded-full -translate-y-12 -translate-x-12 sm:-translate-y-16 sm:-translate-x-16"></div>
                 
                 <div className="relative z-10">
@@ -537,12 +485,12 @@ const BookTour = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                       <div className="relative">
                         <input
-                          type="text"
+                          name="name"
                           placeholder="Enter your full name"
                           value={formData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          onChange={handleChange}
                           required
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
                         />
                         <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                           <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -555,12 +503,13 @@ const BookTour = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                       <div className="relative">
                         <input
+                          name="email"
                           type="email"
                           placeholder="Enter your email address"
                           value={formData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          onChange={handleChange}
                           required
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
                         />
                         <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                           <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -575,13 +524,13 @@ const BookTour = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
                       <div className="relative">
                         <input
+                          name="phone"
                           type="tel"
                           placeholder="Enter your phone number"
-                          value={formData.phoneNumber}
-                          onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
-                          maxLength={10}
+                          value={formData.phone}
+                          onChange={handleChange}
                           required
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
                         />
                         <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                           <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -596,10 +545,11 @@ const BookTour = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Departure City</label>
                       <div className="relative">
                         <select
+                          name="city"
                           value={formData.city}
-                          onChange={(e) => handleInputChange('city', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-sm sm:text-base appearance-none bg-white"
+                          onChange={handleChange}
                           required
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-sm sm:text-base appearance-none bg-white"
                         >
                           <option value="">Select departure city</option>
                           {departureCities.map((city) => (
@@ -619,14 +569,15 @@ const BookTour = () => {
                       <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Members</label>
                       <div className="relative">
                         <input
+                          name="members"
                           type="number"
                           min="1"
-                          max="20"
+                          max={tour.maxGroupSize}
                           placeholder="Enter number of members"
-                          value={formData.membersCount}
-                          onChange={(e) => handleInputChange('membersCount', parseInt(e.target.value) || 1)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          value={formData.members}
+                          onChange={handleChange}
                           required
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
                         />
                         <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                           <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
@@ -642,23 +593,19 @@ const BookTour = () => {
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-600">Price per person:</span>
                             <span className="font-medium">
-                              {(() => {
-                                const cityPricing = tour.cityPricing?.find(cp => cp.city === formData.city);
-                                if (cityPricing?.discountPrice) {
-                                  return (
-                                    <>
-                                      <span className="line-through text-gray-400 mr-2">₹{cityPricing.price}</span>
-                                      <span className="text-green-600">₹{cityPricing.discountPrice}</span>
-                                    </>
-                                  );
-                                }
-                                return `₹${cityPricing?.price || 0}`;
-                              })()}
+                              {selectedCityPricing?.discountPrice ? (
+                                <>
+                                  <span className="line-through text-gray-400 mr-2">₹{selectedCityPricing.price}</span>
+                                  <span className="text-green-600">₹{selectedCityPricing.discountPrice}</span>
+                                </>
+                              ) : (
+                                `₹${selectedCityPricing?.price || 0}`
+                              )}
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-sm">
                             <span className="text-gray-600">Members:</span>
-                            <span className="font-medium">{formData.membersCount}</span>
+                            <span className="font-medium">{formData.members}</span>
                           </div>
                           <div className="flex justify-between items-center text-base font-bold border-t border-gray-200 pt-2">
                             <span>Total Amount:</span>

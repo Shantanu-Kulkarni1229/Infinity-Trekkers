@@ -23,7 +23,7 @@ interface RazorpayOptions {
     name: string;
     email: string;
     contact: string;
-  };
+  }
   theme: {
     color: string;
   };
@@ -131,6 +131,7 @@ const BookTour = () => {
         const data = await response.json();
 
         if (data.success) {
+          // Backend returns { success: true, data: tourData } directly
           const tourData = data.data as Tour;
           
           if (!tourData) {
@@ -141,10 +142,12 @@ const BookTour = () => {
           
           setTour(tourData);
           
+          // Extract unique cities from cityPricing for departure cities
           const cities = tourData.cityPricing ? 
             [...new Set(tourData.cityPricing.map(cp => cp.city))] : [];
           setDepartureCities(cities);
           
+          // Set initial price if cities available
           if (tourData.cityPricing && tourData.cityPricing.length > 0) {
             const firstCity = tourData.cityPricing[0];
             setFinalPrice(firstCity.discountPrice || firstCity.price);
@@ -246,6 +249,7 @@ const BookTour = () => {
       const data = await response.json();
 
       if (data.success) {
+        // Initialize Razorpay payment
         const options = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: data.data.order.amount,
@@ -513,193 +517,193 @@ const BookTour = () => {
                 <div className="absolute top-0 left-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-100 to-transparent rounded-full -translate-y-12 -translate-x-12 sm:-translate-y-16 sm:-translate-x-16"></div>
                 
                 <div className="relative z-10">
-                  <div className="flex items-center mb-6 sm:mb-8">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3 sm:mr-4">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
+                <div className="flex items-center mb-6 sm:mb-8">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3 sm:mr-4">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Booking Form</h2>
+                </div>
+
+                <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-l-4 border-blue-500">
+                  <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">
+                    ₹{finalPrice.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Total amount (including GST)
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+                  {/* Name Input */}
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Enter your full name"
+                        value={formData.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        required
+                      />
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                      </div>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Booking Form</h2>
                   </div>
 
-                  <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-l-4 border-blue-500">
-                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">
-                      ₹{finalPrice.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Total amount (including GST)
+                  {/* Email Input */}
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        placeholder="Enter your email address"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        required
+                      />
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
+                        </svg>
+                      </div>
                     </div>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                    {/* Name Input */}
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Enter your full name"
-                          value={formData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
-                          required
-                        />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                  {/* Phone Input */}
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        placeholder="Enter your phone number"
+                        value={formData.phoneNumber}
+                        onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        maxLength={10}
+                        required
+                      />
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* City Selection */}
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Departure City</label>
+                    <div className="relative">
+                      <select
+                        value={formData.city}
+                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-sm sm:text-base appearance-none bg-white"
+                        required
+                      >
+                        <option value="">Select departure city</option>
+                        {departureCities.map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                        <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Members Count Input */}
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Members</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        placeholder="Enter number of members"
+                        value={formData.membersCount}
+                        onChange={(e) => handleInputChange('membersCount', parseInt(e.target.value) || 1)}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        required
+                      />
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
+                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Display */}
+                  {formData.city && (
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
+                      <h4 className="font-semibold text-gray-800 mb-2 text-sm">Pricing Details:</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Price per person:</span>
+                          <span className="font-medium">
+                            {(() => {
+                              const cityPricing = tour.cityPricing?.find(cp => cp.city === formData.city);
+                              if (cityPricing?.discountPrice) {
+                                return (
+                                  <>
+                                    <span className="line-through text-gray-400 mr-2">₹{cityPricing.price}</span>
+                                    <span className="text-green-600">₹{cityPricing.discountPrice}</span>
+                                  </>
+                                );
+                              }
+                              return `₹${cityPricing?.price || 0}`;
+                            })()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-600">Members:</span>
+                          <span className="font-medium">{formData.membersCount}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-base font-bold border-t border-gray-200 pt-2">
+                          <span>Total Amount:</span>
+                          <span className="text-blue-600">₹{finalPrice.toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    {/* Email Input */}
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                      <div className="relative">
-                        <input
-                          type="email"
-                          placeholder="Enter your email address"
-                          value={formData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
-                          required
-                        />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                          </svg>
-                        </div>
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={bookingProcessing}
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
+                  >
+                    {bookingProcessing ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Processing...
                       </div>
-                    </div>
-
-                    {/* Phone Input */}
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-                      <div className="relative">
-                        <input
-                          type="tel"
-                          placeholder="Enter your phone number"
-                          value={formData.phoneNumber}
-                          onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
-                          maxLength={10}
-                          required
-                        />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* City Selection */}
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Departure City</label>
-                      <div className="relative">
-                        <select
-                          value={formData.city}
-                          onChange={(e) => handleInputChange('city', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-sm sm:text-base appearance-none bg-white"
-                          required
-                        >
-                          <option value="">Select departure city</option>
-                          {departureCities.map((city) => (
-                            <option key={city} value={city}>
-                              {city}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Members Count Input */}
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Members</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="1"
-                          max="20"
-                          placeholder="Enter number of members"
-                          value={formData.membersCount}
-                          onChange={(e) => handleInputChange('membersCount', parseInt(e.target.value) || 1)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
-                          required
-                        />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pricing Display */}
-                    {formData.city && (
-                      <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
-                        <h4 className="font-semibold text-gray-800 mb-2 text-sm">Pricing Details:</h4>
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Price per person:</span>
-                            <span className="font-medium">
-                              {(() => {
-                                const cityPricing = tour.cityPricing?.find(cp => cp.city === formData.city);
-                                if (cityPricing?.discountPrice) {
-                                  return (
-                                    <>
-                                      <span className="line-through text-gray-400 mr-2">₹{cityPricing.price}</span>
-                                      <span className="text-green-600">₹{cityPricing.discountPrice}</span>
-                                    </>
-                                  );
-                                }
-                                return `₹${cityPricing?.price || 0}`;
-                              })()}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Members:</span>
-                            <span className="font-medium">{formData.membersCount}</span>
-                          </div>
-                          <div className="flex justify-between items-center text-base font-bold border-t border-gray-200 pt-2">
-                            <span>Total Amount:</span>
-                            <span className="text-blue-600">₹{finalPrice.toLocaleString()}</span>
-                          </div>
-                        </div>
+                    ) : (
+                      <div className="flex items-center justify-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Book Now & Pay Securely
                       </div>
                     )}
-
-                    {/* Submit Button */}
-                    <button
-                      type="submit"
-                      disabled={bookingProcessing}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
-                    >
-                      {bookingProcessing ? (
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                          Book Now & Pay Securely
-                        </div>
-                      )}
-                    </button>
-                    
-                    <div className="text-xs text-gray-500 text-center space-y-1">
-                      <p>🔒 Secure payment gateway</p>
-                      <p>💯 100% safe & trusted booking</p>
-                    </div>
-                  </form>
-                </div>
+                  </button>
+                  
+                  <div className="text-xs text-gray-500 text-center space-y-1">
+                    <p>🔒 Secure payment gateway</p>
+                    <p>💯 100% safe & trusted booking</p>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

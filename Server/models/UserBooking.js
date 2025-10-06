@@ -13,8 +13,11 @@ const userBookingSchema = new mongoose.Schema(
     membersCount: { type: Number, required: true, min: 1 },
     trek: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Trek",
-      required: true
+      ref: "Trek"
+    },
+    tour: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tour"
     },
     finalPrice: { type: Number, required: true },
     paymentStatus: {
@@ -28,6 +31,17 @@ const userBookingSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Add validation to ensure either trek or tour is provided
+userBookingSchema.pre('save', function(next) {
+  if (!this.trek && !this.tour) {
+    next(new Error('Either trek or tour must be specified'));
+  } else if (this.trek && this.tour) {
+    next(new Error('Cannot specify both trek and tour'));
+  } else {
+    next();
+  }
+});
 
 const UserBooking = mongoose.model("UserBooking", userBookingSchema);
 export default UserBooking;

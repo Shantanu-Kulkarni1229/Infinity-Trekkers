@@ -1,4 +1,4 @@
-import Trek from "../models/Trek.js";
+import Tour from "../models/Tour.js";
 
 // Helper function for error handling
 const handleError = (res, error, defaultMessage = "Server Error") => {
@@ -27,19 +27,22 @@ const handleError = (res, error, defaultMessage = "Server Error") => {
   });
 };
 
-// ✅ Add a new trek
-export const addTrek = async (req, res) => {
+// ✅ Add a new tour
+export const addTour = async (req, res) => {
   try {
     const { 
       name, 
       description, 
       location, 
       duration, 
+      tourType,
       difficulty, 
       startDate, 
       endDate, 
       highlights,
-      cityPricing
+      cityPricing,
+      maxGroupSize,
+      isFeatured
     } = req.body;
 
     if (!name || !description || !location || !duration || !difficulty) {
@@ -62,14 +65,6 @@ export const addTrek = async (req, res) => {
       parsedCityPricing = parsedCityPricing.filter(city => 
         validCities.includes(city.city)
       );
-
-      // ✅ Ensure at least one city has confirmed pricing (trek must operate from somewhere)
-      if (parsedCityPricing.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "At least one city must have confirmed pricing for the trek to be available"
-        });
-      }
     } else {
       return res.status(400).json({
         success: false,
@@ -97,110 +92,132 @@ export const addTrek = async (req, res) => {
     if (new Date(startDate) >= new Date(endDate)) {
       return res.status(400).json({
         success: false,
-        message: "End date must be after start date"
+        message: "Start date must be before end date"
       });
     }
 
     const thumbnail = req.file?.path;
     if (!thumbnail) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Thumbnail is required" 
+        message: "Thumbnail image is required"
       });
     }
 
-    const newTrek = new Trek({
+    const newTour = new Tour({
       name,
       thumbnail,
       description,
       location,
       duration,
+      tourType: tourType || "Adventure",
       difficulty,
       startDate,
       endDate,
       highlights: highlights 
         ? highlights.split(",").map(h => h.trim()) 
         : [],
-      cityPricing: sanitizedCityPricing
+      cityPricing: sanitizedCityPricing,
+      maxGroupSize: maxGroupSize || 20,
+      isFeatured: isFeatured === 'true' || isFeatured === true || false
     });
 
-    await newTrek.save();
+    await newTour.save();
     
     res.status(201).json({ 
       success: true,
-      message: "Trek added successfully", 
-      data: newTrek 
+      message: "Tour added successfully", 
+      data: newTour 
     });
   } catch (error) {
-    handleError(res, error, "Failed to add trek");
+    handleError(res, error, "Failed to add tour");
   }
 };
 
-
-
-
-// Get all treks
-export const getTreks = async (req, res) => {
+// Get all tours
+export const getTours = async (req, res) => {
   try {
     const { city } = req.query;
-    let treks = await Trek.find().sort({ createdAt: -1 });
+    let tours = await Tour.find().sort({ createdAt: -1 });
 
     // Filter city pricing if query provided
     if (city) {
-      treks = treks.map(trek => ({
-        ...trek._doc,
-        cityPricing: trek.cityPricing.filter(cp => cp.city === city)
+      tours = tours.map(tour => ({
+        ...tour._doc,
+        cityPricing: tour.cityPricing.filter(cp => cp.city === city)
       }));
     }
 
     res.status(200).json({ 
       success: true,
-      count: treks.length,
-      data: treks 
+      count: tours.length,
+      data: tours 
     });
   } catch (error) {
-    handleError(res, error, "Failed to fetch treks");
+    handleError(res, error, "Failed to fetch tours");
   }
 };
 
-// Get single trek by ID
-export const getTrekById = async (req, res) => {
+// Get featured tours
+export const getFeaturedTours = async (req, res) => {
+  try {
+    const { limit = 6 } = req.query;
+    const tours = await Tour.find({ 
+      isFeatured: true, 
+      isActive: true 
+    })
+    .sort({ createdAt: -1 })
+    .limit(parseInt(limit));
+
+    res.status(200).json({ 
+      success: true,
+      count: tours.length,
+      data: tours 
+    });
+  } catch (error) {
+    handleError(res, error, "Failed to fetch featured tours");
+  }
+};
+
+// Get single tour by ID
+export const getTourById = async (req, res) => {
   try {
     const { city } = req.query;
-    const trek = await Trek.findById(req.params.id);
+    const tour = await Tour.findById(req.params.id);
     
-    if (!trek) {
+    if (!tour) {
       return res.status(404).json({ 
         success: false,
-        message: "Trek not found" 
+        message: "Tour not found" 
       });
     }
 
-    let trekData = trek._doc;
+    let tourData = tour._doc;
     if (city) {
-      trekData = {
-        ...trek._doc,
-        cityPricing: trek.cityPricing.filter(cp => cp.city === city)
-      };
+      tourData.cityPricing = tour.cityPricing.filter(cp => cp.city === city);
     }
+
+    // Extract unique cities from cityPricing (only cities with confirmed prices)
+    const departureCities = tour.cityPricing.map((cp) => cp.city);
     
     res.status(200).json({ 
       success: true,
-      data: trekData 
+      data: tourData,
+      departureCities, // 👈 Added here
     });
   } catch (error) {
     if (error.kind === "ObjectId") {
-      return res.status(400).json({ 
+      return res.status(404).json({ 
         success: false,
-        message: "Invalid trek ID format" 
+        message: "Tour not found" 
       });
     }
-    handleError(res, error, "Failed to fetch trek");
+    handleError(res, error, "Failed to fetch tour");
   }
 };
 
-// Update trek
-export const updateTrek = async (req, res) => {
+// Update tour
+export const updateTour = async (req, res) => {
   try {
     const { 
       name, 
@@ -236,94 +253,94 @@ export const updateTrek = async (req, res) => {
     if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
       return res.status(400).json({
         success: false,
-        message: "End date must be after start date"
+        message: "Start date must be before end date"
       });
     }
 
-    const updatedTrek = await Trek.findByIdAndUpdate(
+    const updatedTour = await Tour.findByIdAndUpdate(
       req.params.id,
       updatedData,
       { new: true, runValidators: true }
     );
 
-    if (!updatedTrek) {
+    if (!updatedTour) {
       return res.status(404).json({ 
         success: false,
-        message: "Trek not found" 
+        message: "Tour not found" 
       });
     }
 
     res.status(200).json({ 
       success: true,
-      message: "Trek updated successfully", 
-      data: updatedTrek 
+      message: "Tour updated successfully", 
+      data: updatedTour 
     });
   } catch (error) {
     if (error.kind === "ObjectId") {
-      return res.status(400).json({ 
+      return res.status(404).json({ 
         success: false,
-        message: "Invalid trek ID format" 
+        message: "Tour not found" 
       });
     }
-    handleError(res, error, "Failed to update trek");
+    handleError(res, error, "Failed to update tour");
   }
 };
 
-// Delete trek
-export const deleteTrek = async (req, res) => {
+// Delete tour
+export const deleteTour = async (req, res) => {
   try {
-    const deletedTrek = await Trek.findByIdAndDelete(req.params.id);
+    const deletedTour = await Tour.findByIdAndDelete(req.params.id);
 
-    if (!deletedTrek) {
+    if (!deletedTour) {
       return res.status(404).json({ 
         success: false,
-        message: "Trek not found" 
+        message: "Tour not found" 
       });
     }
 
     res.status(200).json({ 
       success: true,
-      message: "Trek deleted successfully",
+      message: "Tour deleted successfully",
       data: { id: req.params.id } 
     });
   } catch (error) {
     if (error.kind === "ObjectId") {
-      return res.status(400).json({ 
+      return res.status(404).json({ 
         success: false,
-        message: "Invalid trek ID format" 
+        message: "Tour not found" 
       });
     }
-    handleError(res, error, "Failed to delete trek");
+    handleError(res, error, "Failed to delete tour");
   }
 };
 
-// Toggle trek active/inactive
-export const toggleTrekStatus = async (req, res) => {
+// Toggle tour active/inactive
+export const toggleTourStatus = async (req, res) => {
   try {
-    const trek = await Trek.findById(req.params.id);
+    const tour = await Tour.findById(req.params.id);
 
-    if (!trek) {
+    if (!tour) {
       return res.status(404).json({ 
         success: false,
-        message: "Trek not found" 
+        message: "Tour not found" 
       });
     }
 
-    trek.isActive = !trek.isActive;
-    await trek.save();
+    tour.isActive = !tour.isActive;
+    await tour.save();
 
     res.status(200).json({ 
       success: true,
-      message: `Trek is now ${trek.isActive ? "Active" : "Inactive"}`, 
-      data: trek 
+      message: `Tour is now ${tour.isActive ? "Active" : "Inactive"}`, 
+      data: tour 
     });
   } catch (error) {
     if (error.kind === "ObjectId") {
-      return res.status(400).json({ 
+      return res.status(404).json({ 
         success: false,
-        message: "Invalid trek ID format" 
+        message: "Tour not found" 
       });
     }
-    handleError(res, error, "Failed to toggle trek status");
+    handleError(res, error, "Failed to toggle tour status");
   }
 };

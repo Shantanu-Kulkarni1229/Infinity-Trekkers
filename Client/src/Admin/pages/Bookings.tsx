@@ -1,7 +1,8 @@
-import  { useEffect, useState } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import  { useEffect, useState, useCallback, useMemo } from "react";
 import axios, { AxiosError } from "axios";
 
-type Trek = {
+type Item = {
   id: string;
   name: string;
   startDate: string;
@@ -9,6 +10,7 @@ type Trek = {
   totalBookings: number;
   totalRevenue: number;
   isActive: boolean;
+  type: "trek" | "tour";
 };
 
 type Booking = {
@@ -19,15 +21,17 @@ type Booking = {
   members: number;
   status: string;
   bookedOn?: string;
+  itemType?: "trek" | "tour";
 };
 
-type TrekDetails = {
+type ItemDetails = {
   id?: string;
   name?: string;
   totalMembers?: number;
   totalRevenue?: number;
   isActive?: boolean;
   endDate?: string;
+  type?: "trek" | "tour";
 };
 
 // Helper component to render HTML content safely
@@ -37,10 +41,10 @@ const RenderHTML = ({ html }: { html?: string }) => {
 };
 
 const Bookings = () => {
-  const [treks, setTreks] = useState<Trek[]>([]);
-  const [selectedTrek, setSelectedTrek] = useState<string | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [summary, setSummary] = useState<TrekDetails>({});
+  const [summary, setSummary] = useState<ItemDetails>({});
   const [loading, setLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -50,36 +54,76 @@ const Bookings = () => {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
-  const headers = { "x-admin-key": localStorage.getItem("adminKey") || "" };
+  const headers = useMemo(() => ({ "x-admin-key": localStorage.getItem("adminKey") || "" }), []);
 
-  // Fetch overview of all treks
-  const fetchOverview = async () => {
+  // Fetch overview of all treks and tours with booking statistics
+  const fetchOverview = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/api/admin/treks-overview`, {
-        headers,
-      });
-      const activeTreks = res.data.data.filter((trek: Trek) => trek.isActive);
-      setTreks(activeTreks);
+      
+      // Use the new unified overview endpoint that includes booking statistics
+      const response = await axios.get(`${API_BASE}/api/admin/unified-overview`, { headers });
+      
+      const itemsData = (response.data.data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        isActive: item.isActive,
+        type: item.type,
+        totalBookings: item.totalBookings || 0,
+        totalRevenue: item.totalRevenue || 0
+      }));
+
+      setItems(itemsData);
     } catch (err) {
       console.error("Failed to fetch overview:", err);
+      // Fallback to the old method if unified endpoint fails
+      try {
+        const [treksRes, toursRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/treks`, { headers }),
+          axios.get(`${API_BASE}/api/tours`, { headers }).catch(() => ({ data: [] }))
+        ]);
+
+        const treksData = (treksRes.data.data || treksRes.data || []).map((trek: any) => ({ 
+          ...trek, 
+          type: "trek" as const,
+          totalBookings: 0,
+          totalRevenue: 0
+        }));
+        
+        const toursData = (toursRes.data.data || toursRes.data || []).map((tour: any) => ({ 
+          ...tour, 
+          type: "tour" as const,
+          totalBookings: 0,
+          totalRevenue: 0
+        }));
+
+        const allActiveItems = [...treksData, ...toursData].filter((item: Item) => item.isActive);
+        setItems(allActiveItems);
+      } catch (fallbackErr) {
+        console.error("Fallback fetch also failed:", fallbackErr);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [API_BASE, headers]);
 
-  // Fetch bookings for selected trek
-  const fetchBookings = async (trekId: string) => {
-    if (!trekId) {
-      console.error("Trek ID is undefined.");
+  // Fetch bookings for selected item (trek or tour)
+  const fetchBookings = async (itemId: string, itemType: "trek" | "tour") => {
+    if (!itemId) {
+      console.error("Item ID is undefined.");
       return;
     }
 
     setBookingsLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/admin/trek-users/${trekId}`, {
-        headers,
-      });
+      // Use appropriate endpoint based on item type
+      const endpoint = itemType === "trek" 
+        ? `${API_BASE}/api/admin/trek-users/${itemId}`
+        : `${API_BASE}/api/admin/tour-users/${itemId}`;
+        
+      const res = await axios.get(endpoint, { headers });
       console.log("Bookings API Response:", res.data);
 
       const bookingsData: Booking[] =
@@ -87,47 +131,65 @@ const Bookings = () => {
         res.data.bookings ||
         res.data.users ||
         [];
-      const trekDetails: TrekDetails =
-        res.data.data?.trekDetails || res.data.trekDetails || {};
+      const itemDetails: ItemDetails =
+        res.data.data?.trekDetails || 
+        res.data.data?.tourDetails || 
+        res.data.trekDetails || 
+        res.data.tourDetails || 
+        {};
 
-      setBookings(bookingsData);
-      setSummary(trekDetails);
+      // Add item type to each booking
+      const bookingsWithType = bookingsData.map(booking => ({
+        ...booking,
+        itemType
+      }));
+
+      setBookings(bookingsWithType);
+      setSummary({ ...itemDetails, type: itemType });
     } catch (err) {
       console.error("Error fetching bookings:", err);
+      // If tour endpoint doesn't exist yet, show empty results
+      if (itemType === "tour") {
+        setBookings([]);
+        setSummary({});
+      }
     } finally {
       setBookingsLoading(false);
     }
   };
 
   const handleClearBookings = async (
-    trekId: string | undefined,
+    itemId: string | undefined,
     isActive: boolean | undefined,
-    endDate: string | undefined
+    endDate: string | undefined,
+    itemType: "trek" | "tour" = "trek"
   ) => {
-    if (!trekId) {
-      console.error("Trek ID is missing");
+    if (!itemId) {
+      console.error("Item ID is missing");
       return;
     }
 
     if (isActive) {
-      alert("Trek is still active. Deactivate before clearing.");
+      alert(`${itemType === "trek" ? "Trek" : "Tour"} is still active. Deactivate before clearing.`);
       return;
     }
 
     if (endDate && new Date(endDate) > new Date()) {
-      alert("Trek hasn't ended yet.");
+      alert(`${itemType === "trek" ? "Trek" : "Tour"} hasn't ended yet.`);
       return;
     }
 
     setClearingBookings(true);
     try {
-      const res = await axios.delete(`${API_BASE}/api/admin/clear-bookings/${trekId}`, {
-        headers,
-      });
+      const endpoint = itemType === "trek" 
+        ? `${API_BASE}/api/admin/clear-bookings/${itemId}`
+        : `${API_BASE}/api/admin/clear-tour-bookings/${itemId}`;
+        
+      const res = await axios.delete(endpoint, { headers });
       alert(res.data.message);
       setBookings([]);
       setSummary({});
-      setSelectedTrek(null);
+      setSelectedItem(null);
       setShowClearConfirm(false);
       fetchOverview(); // Refresh overview
     } catch (err) {
@@ -174,14 +236,16 @@ const Bookings = () => {
     });
 
   const totalStats = {
-    totalBookings: treks.reduce((sum, trek) => sum + trek.totalBookings, 0),
-    totalRevenue: treks.reduce((sum, trek) => sum + trek.totalRevenue, 0),
-    activeTreks: treks.filter(t => t.isActive).length
+    totalBookings: items.reduce((sum, item) => sum + item.totalBookings, 0),
+    totalRevenue: items.reduce((sum, item) => sum + item.totalRevenue, 0),
+    activeItems: items.filter(t => t.isActive).length,
+    activeTraks: items.filter(t => t.isActive && t.type === "trek").length,
+    activeTours: items.filter(t => t.isActive && t.type === "tour").length
   };
 
   useEffect(() => {
     fetchOverview();
-  }, []);
+  }, [fetchOverview]);
 
   if (loading) {
     return (
@@ -249,8 +313,9 @@ const Bookings = () => {
             <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Active Treks</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalStats.activeTreks}</p>
+                  <p className="text-sm text-gray-600">Active Items</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalStats.activeItems}</p>
+                  <p className="text-xs text-gray-500">{totalStats.activeTraks} treks, {totalStats.activeTours} tours</p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,7 +327,7 @@ const Bookings = () => {
           </div>
         </div>
 
-        {/* Trek Overview */}
+        {/* Items Overview */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -270,52 +335,52 @@ const Bookings = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Select Trek to View Bookings</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Select Trek or Tour to View Bookings</h2>
           </div>
 
-          {treks.length === 0 ? (
+          {items.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Treks</h3>
-              <p className="text-gray-600">No active treks found. Create some treks to see bookings.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Items</h3>
+              <p className="text-gray-600">No active treks or tours found. Create some to see bookings.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {treks.map((trek) => (
+              {items.map((item) => (
                 <div
-                  key={trek.id}
+                  key={item.id}
                   className={`
                     border rounded-xl p-6 cursor-pointer transition-all duration-300 hover:shadow-lg group
-                    ${selectedTrek === trek.id 
+                    ${selectedItem === item.id 
                       ? "bg-blue-50 border-blue-300 shadow-md" 
                       : "bg-white border-gray-200 hover:border-blue-200"
                     }
                   `}
                   onClick={() => {
-                    if (!trek.id) {
-                      console.error("Trek ID missing:", trek);
+                    if (!item.id) {
+                      console.error("Item ID missing:", item);
                       return;
                     }
-                    setSelectedTrek(trek.id);
-                    fetchBookings(trek.id);
+                    setSelectedItem(item.id);
+                    fetchBookings(item.id, item.type);
                   }}
                 >
                   <div className="flex items-start justify-between mb-4">
                     <h3 className="font-semibold text-lg text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors duration-200">
-                      <RenderHTML html={trek.name} />
+                      <RenderHTML html={item.name} />
                     </h3>
                     <div className={`
                       px-3 py-1 rounded-full text-xs font-medium border
-                      ${trek.isActive 
+                      ${item.isActive 
                         ? 'bg-green-100 text-green-800 border-green-200' 
                         : 'bg-gray-100 text-gray-800 border-gray-200'
                       }
                     `}>
-                      {trek.isActive ? "Active" : "Inactive"}
+                      {item.isActive ? "Active" : "Inactive"}
                     </div>
                   </div>
 
@@ -325,7 +390,7 @@ const Bookings = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a1 1 0 011 1v9a2 2 0 01-2 2H7a2 2 0 01-2-2V8a1 1 0 011-1h2z" />
                       </svg>
                       <span className="text-sm">
-                        {new Date(trek.startDate).toLocaleDateString()} → {new Date(trek.endDate).toLocaleDateString()}
+                        {new Date(item.startDate).toLocaleDateString()} → {new Date(item.endDate).toLocaleDateString()}
                       </span>
                     </div>
 
@@ -338,7 +403,7 @@ const Bookings = () => {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Bookings</p>
-                          <p className="font-semibold text-gray-900">{trek.totalBookings}</p>
+                          <p className="font-semibold text-gray-900">{item.totalBookings}</p>
                         </div>
                       </div>
 
@@ -350,13 +415,13 @@ const Bookings = () => {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Revenue</p>
-                          <p className="font-semibold text-gray-900">₹{trek.totalRevenue.toLocaleString()}</p>
+                          <p className="font-semibold text-gray-900">₹{item.totalRevenue.toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {selectedTrek === trek.id && (
+                  {selectedItem === item.id && (
                     <div className="border-t border-blue-200 pt-3">
                       <div className="flex items-center gap-2 text-blue-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -373,7 +438,7 @@ const Bookings = () => {
         </div>
 
         {/* Bookings Detail */}
-        {selectedTrek && summary?.name && (
+        {selectedItem && summary?.name && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             {/* Trek Summary Header */}
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
@@ -402,7 +467,7 @@ const Bookings = () => {
                   {showClearConfirm ? (
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleClearBookings(summary.id, summary.isActive, summary.endDate)}
+                        onClick={() => handleClearBookings(summary.id, summary.isActive, summary.endDate, summary.type)}
                         disabled={clearingBookings}
                         className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50"
                       >
