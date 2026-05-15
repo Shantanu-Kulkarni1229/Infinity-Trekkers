@@ -1,6 +1,8 @@
-import { useState, type FormEvent, type ChangeEvent } from "react";
+import { useMemo, useState, type FormEvent, type ChangeEvent } from "react";
 import axios, { type AxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 type ItemForm = {
   name: string;
@@ -8,9 +10,8 @@ type ItemForm = {
   location: string;
   duration: string;
   difficulty: string;
-  startDate: string;
-  endDate: string;
-  highlights: string;
+  specialType: string;
+  highlights: string[];
 };
 
 type CityPricing = {
@@ -19,8 +20,68 @@ type CityPricing = {
   discountPrice: string;
 };
 
+type ItineraryItem = {
+  day: string;
+  title: string;
+  description: string;
+  meals: string;
+  accommodation: string;
+};
+
+type CarryItem = {
+  item: string;
+  details: string;
+  required: boolean;
+};
+
+type PickupLocation = {
+  city: string;
+  location: string;
+  pickupTime: string;
+  notes: string;
+};
+
+type DateWindow = {
+  label: string;
+  startDate: string;
+  endDate: string;
+};
+
 const cities = ["Chh. Sambhajinagar", "Pune", "Mumbai"] as const;
 const difficulties = ["Easy", "Moderate", "Hard"] as const;
+const specialTypes = [
+  "Pre Monsoon Special",
+  "Fireflies Festival Special",
+  "Technical Treks",
+  "Waterfall Treks",
+  "Jungle Treks",
+  "Outdoor Camping",
+  "One Day Treks",
+] as const;
+
+const quillModules = {
+  toolbar: [
+    [{ header: [1, 2, 3, false] }],
+    ["bold", "italic", "underline", "strike"],
+    [{ color: [] }, { background: [] }],
+    [{ align: [] }],
+    [{ list: "ordered" }, { list: "bullet" }],
+    ["link", "clean"],
+  ],
+};
+
+const quillFormats = [
+  "header",
+  "bold",
+  "italic",
+  "underline",
+  "strike",
+  "color",
+  "background",
+  "align",
+  "list",
+  "link",
+];
 
 const AddTrek = () => {
   const [form, setForm] = useState<ItemForm>({
@@ -29,9 +90,8 @@ const AddTrek = () => {
     location: "",
     duration: "",
     difficulty: "Moderate",
-    startDate: "",
-    endDate: "",
-    highlights: "",
+    specialType: "Technical Treks",
+    highlights: [],
   });
 
   const [itemType, setItemType] = useState<"trek" | "tour">("trek");
@@ -40,10 +100,24 @@ const AddTrek = () => {
   const [cityPricing, setCityPricing] = useState<CityPricing[]>(
     cities.map((city) => ({ city, price: "", discountPrice: "" }))
   );
+  const [itinerary, setItinerary] = useState<ItineraryItem[]>([
+    { day: "1", title: "", description: "", meals: "", accommodation: "" },
+  ]);
+  const [thingsToCarry, setThingsToCarry] = useState<CarryItem[]>([
+    { item: "", details: "", required: true },
+  ]);
+  const [pickupLocations, setPickupLocations] = useState<PickupLocation[]>([
+    { city: "Chh. Sambhajinagar", location: "", pickupTime: "", notes: "" },
+  ]);
+  const [dateWindows, setDateWindows] = useState<DateWindow[]>([
+    { label: "Batch 1", startDate: "", endDate: "" },
+  ]);
   const [error, setError] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [currentStep] = useState<number>(1);
   const navigate = useNavigate();
+
+  const descriptionModules = useMemo(() => quillModules, []);
 
   const handlePricingChange = (
     index: number,
@@ -55,6 +129,46 @@ const AddTrek = () => {
     setCityPricing(updated);
   };
 
+  const handleItineraryChange = (
+    index: number,
+    field: keyof ItineraryItem,
+    value: string
+  ) => {
+    const updated = [...itinerary];
+    updated[index] = { ...updated[index], [field]: value };
+    setItinerary(updated);
+  };
+
+  const handleCarryChange = (
+    index: number,
+    field: keyof CarryItem,
+    value: string | boolean
+  ) => {
+    const updated = [...thingsToCarry];
+    updated[index] = { ...updated[index], [field]: value } as CarryItem;
+    setThingsToCarry(updated);
+  };
+
+  const handlePickupChange = (
+    index: number,
+    field: keyof PickupLocation,
+    value: string
+  ) => {
+    const updated = [...pickupLocations];
+    updated[index] = { ...updated[index], [field]: value };
+    setPickupLocations(updated);
+  };
+
+  const handleDateWindowChange = (
+    index: number,
+    field: keyof DateWindow,
+    value: string
+  ) => {
+    const updated = [...dateWindows];
+    updated[index] = { ...updated[index], [field]: value };
+    setDateWindows(updated);
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
@@ -62,6 +176,14 @@ const AddTrek = () => {
 
     if (!thumbnail) {
       setError("Thumbnail is required");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Validate that at least one date window is provided
+    const validDateWindows = dateWindows.filter(dw => dw.startDate && dw.endDate);
+    if (validDateWindows.length === 0) {
+      setError("At least one date window with start and end date is required");
       setIsSubmitting(false);
       return;
     }
@@ -81,10 +203,16 @@ const AddTrek = () => {
       fd.append("location", form.location);
       fd.append("duration", form.duration);
       fd.append("difficulty", form.difficulty);
-      fd.append("startDate", form.startDate);
-      fd.append("endDate", form.endDate);
-      fd.append("highlights", form.highlights);
+      fd.append("specialType", form.specialType);
+      // Use the first valid date window as startDate and endDate
+      fd.append("startDate", validDateWindows[0].startDate);
+      fd.append("endDate", validDateWindows[validDateWindows.length - 1].endDate);
+      fd.append("highlights", JSON.stringify(form.highlights.filter(h => h.trim())));
       fd.append("cityPricing", JSON.stringify(cityPricing));
+      fd.append("dateWindows", JSON.stringify(validDateWindows));
+      fd.append("itinerary", JSON.stringify(itinerary));
+      fd.append("thingsToCarry", JSON.stringify(thingsToCarry));
+      fd.append("pickupLocations", JSON.stringify(pickupLocations));
       fd.append("thumbnail", thumbnail);
 
       const endpoint = itemType === "trek" ? "treks" : "tours";
@@ -322,33 +450,35 @@ const AddTrek = () => {
                   </div>
                 </div>
 
-                {/* Dates */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={form.startDate}
-                      onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      End Date *
-                    </label>
-                    <input
-                      type="date"
-                      value={form.endDate}
-                      onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                      required
-                    />
+                {/* Special Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <span className="flex items-center gap-2">
+                      <span>✨</span>
+                      Special Type *
+                    </span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={form.specialType}
+                      onChange={(e) => setForm({ ...form, specialType: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 appearance-none bg-white"
+                    >
+                      {specialTypes.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
                   </div>
                 </div>
+
+                {/* Dates */}
               </div>
             </div>
 
@@ -367,30 +497,391 @@ const AddTrek = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Description *
                   </label>
-                  <textarea
-                    placeholder={`Describe the ${itemType} experience, route, and what makes it special [MIN 20 words]...`}
-                    value={form.description}
-                    onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                    required
-                  />
+                  <div className="overflow-hidden rounded-lg border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200">
+                    <ReactQuill
+                      theme="snow"
+                      value={form.description}
+                      onChange={(value) => setForm({ ...form, description: value })}
+                      modules={descriptionModules}
+                      formats={quillFormats}
+                      placeholder={`Describe the ${itemType} experience, route, and what makes it special...`}
+                      className="bg-white"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Use bold, italic, lists, and alignment to format the trek details.
+                  </p>
                 </div>
 
                 {/* Highlights */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     {itemType.charAt(0).toUpperCase() + itemType.slice(1)} Highlights *
                   </label>
-                  <textarea
-                    placeholder={`List the key highlights and attractions of this ${itemType}...`}
-                    value={form.highlights}
-                    onChange={(e) => setForm({ ...form, highlights: e.target.value })}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
-                    required
-                  />
+                  <div className="space-y-3">
+                    {form.highlights.map((highlight, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <span className="text-xl text-blue-600 flex-shrink-0">•</span>
+                        <input
+                          type="text"
+                          placeholder={`Highlight ${index + 1}`}
+                          value={highlight}
+                          onChange={(e) => {
+                            const updated = [...form.highlights];
+                            updated[index] = e.target.value;
+                            setForm({ ...form, highlights: updated });
+                          }}
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = form.highlights.filter((_, i) => i !== index);
+                            setForm({ ...form, highlights: updated });
+                          }}
+                          className="px-4 py-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors duration-200 font-medium text-sm flex-shrink-0"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, highlights: [...form.highlights, ""] });
+                      }}
+                      className="w-full px-4 py-3 border-2 border-dashed border-blue-400 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors duration-200 font-medium flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Highlight
+                    </button>
+                  </div>
+                  <p className="mt-3 text-xs text-gray-500">
+                    Add each highlight as a separate bullet point. Fill all fields before submitting.
+                  </p>
                 </div>
+              </div>
+            </div>
+            <div className="p-6 sm:p-8 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-purple-50">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-purple-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">📅</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Date Windows</h2>
+                  <p className="text-sm text-gray-600 mt-1">Add all available date batches for this {itemType}</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {dateWindows.map((window, index) => (
+                  <div key={`date-window-${index}`} className="rounded-xl border border-blue-200 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm font-semibold text-blue-600">
+                          {index + 1}
+                        </div>
+                        <h3 className="font-medium text-gray-900">Batch {index + 1}</h3>
+                      </div>
+                      {dateWindows.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setDateWindows(dateWindows.filter((_, itemIndex) => itemIndex !== index))}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          🗑️ Remove
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <input
+                        type="text"
+                        placeholder="e.g. Batch 1, Batch 2, etc."
+                        value={window.label}
+                        onChange={(event) => handleDateWindowChange(index, "label", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      />
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-400">📍</span>
+                        </div>
+                        <input
+                          type="date"
+                          value={window.startDate}
+                          onChange={(event) => handleDateWindowChange(index, "startDate", event.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          required
+                        />
+                      </div>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-400">📍</span>
+                        </div>
+                        <input
+                          type="date"
+                          value={window.endDate}
+                          onChange={(event) => handleDateWindowChange(index, "endDate", event.target.value)}
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setDateWindows([
+                    ...dateWindows,
+                    { label: `Batch ${dateWindows.length + 1}`, startDate: "", endDate: "" },
+                  ])}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-300 bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 text-sm font-medium hover:from-blue-100 hover:to-purple-100 transition-all duration-200"
+                >
+                  + Add Date Window
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8 border-b border-gray-100 bg-slate-50/60">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">📅</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Day Wise Itinerary</h2>
+                  <p className="text-sm text-gray-600 mt-1">Add multiple days with descriptions, meals, and stay details</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {itinerary.map((day, index) => (
+                  <div key={`itinerary-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
+                          {index + 1}
+                        </div>
+                        <h3 className="font-medium text-gray-900">Day {index + 1}</h3>
+                      </div>
+                      {itinerary.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setItinerary(itinerary.filter((_, itemIndex) => itemIndex !== index))}
+                          className="text-sm font-medium text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Day number"
+                        value={day.day}
+                        onChange={(event) => handleItineraryChange(index, "day", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Day title"
+                        value={day.title}
+                        onChange={(event) => handleItineraryChange(index, "title", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <textarea
+                        placeholder="Day description"
+                        value={day.description}
+                        onChange={(event) => handleItineraryChange(index, "description", event.target.value)}
+                        className="w-full md:col-span-2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-28"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Meals included"
+                        value={day.meals}
+                        onChange={(event) => handleItineraryChange(index, "meals", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Accommodation"
+                        value={day.accommodation}
+                        onChange={(event) => handleItineraryChange(index, "accommodation", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setItinerary([
+                    ...itinerary,
+                    { day: String(itinerary.length + 1), title: "", description: "", meals: "", accommodation: "" },
+                  ])}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 text-sm font-medium hover:bg-indigo-100"
+                >
+                  + Add Day
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8 border-b border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">🎒</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Things to Carry</h2>
+                  <p className="text-sm text-gray-600 mt-1">Add a detailed packing checklist</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {thingsToCarry.map((carry, index) => (
+                  <div key={`carry-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center text-xs font-bold text-emerald-600">
+                          {index + 1}
+                        </div>
+                        <h3 className="font-medium text-gray-900">Item {index + 1}</h3>
+                      </div>
+                      {thingsToCarry.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setThingsToCarry(thingsToCarry.filter((_, itemIndex) => itemIndex !== index))}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          🗑️ Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input
+                        type="text"
+                        placeholder="Item name"
+                        value={carry.item}
+                        onChange={(event) => handleCarryChange(index, "item", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <label className="flex items-center gap-3 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={carry.required}
+                          onChange={(event) => handleCarryChange(index, "required", event.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">✅ Required item</span>
+                      </label>
+                      <textarea
+                        placeholder="Details or instructions"
+                        value={carry.details}
+                        onChange={(event) => handleCarryChange(index, "details", event.target.value)}
+                        className="w-full md:col-span-2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-24"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setThingsToCarry([...thingsToCarry, { item: "", details: "", required: true }])}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-all duration-200"
+                >
+                  + Add Carry Item
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 sm:p-8 border-b border-gray-100 bg-slate-50/60">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">🚌</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Pickup Locations</h2>
+                  <p className="text-sm text-gray-600 mt-1">Add multiple pickup points with timing details for each city</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {pickupLocations.map((pickup, index) => (
+                  <div key={`pickup-${index}`} className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center text-xs font-bold text-orange-600">
+                          {index + 1}
+                        </div>
+                        <h3 className="font-medium text-gray-900">Pickup {index + 1}</h3>
+                      </div>
+                      {pickupLocations.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setPickupLocations(pickupLocations.filter((_, itemIndex) => itemIndex !== index))}
+                          className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded-lg transition-colors"
+                        >
+                          🗑️ Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <select
+                        value={pickup.city}
+                        onChange={(event) => handlePickupChange(index, "city", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        required
+                      >
+                        {cities.map((city) => (
+                          <option key={city} value={city}>{city}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Pickup location"
+                        value={pickup.location}
+                        onChange={(event) => handlePickupChange(index, "location", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Pickup time e.g. 06:30 AM"
+                        value={pickup.pickupTime}
+                        onChange={(event) => handlePickupChange(index, "pickupTime", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Optional notes"
+                        value={pickup.notes}
+                        onChange={(event) => handlePickupChange(index, "notes", event.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setPickupLocations([
+                    ...pickupLocations,
+                    { city: "Chh. Sambhajinagar", location: "", pickupTime: "", notes: "" },
+                  ])}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-200 bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition-all duration-200"
+                >
+                  + Add Pickup Location
+                </button>
               </div>
             </div>
 
@@ -485,7 +976,10 @@ const AddTrek = () => {
                 <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
                   <span className="text-lg">📸</span>
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Media Upload</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Media Upload</h2>
+                  <p className="text-sm text-gray-600 mt-1">Upload a stunning thumbnail image for your {itemType}</p>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -502,13 +996,18 @@ const AddTrek = () => {
                     </div>
                     <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
                     <p className="text-xs text-gray-500">PNG, JPG, JPEG up to 10MB</p>
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept="image/*"
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      required
-                    />
+                    <div className="mt-4 flex justify-center">
+                      <label className="inline-flex cursor-pointer items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+                        📷 Choose Image
+                        <input
+                          type="file"
+                          onChange={handleFileChange}
+                          accept="image/*"
+                          className="sr-only"
+                          required
+                        />
+                      </label>
+                    </div>
                   </div>
                 ) : (
                   <div className="relative">
@@ -520,11 +1019,9 @@ const AddTrek = () => {
                     <button
                       type="button"
                       onClick={removeThumbnail}
-                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors duration-200"
+                      className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors duration-200 shadow-lg"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+                      ✕
                     </button>
                   </div>
                 )}
@@ -535,7 +1032,7 @@ const AddTrek = () => {
           {/* Submit Button */}
           <div className="flex items-center justify-between bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
             <div className="text-sm text-gray-600">
-              <span className="font-medium">Ready to publish?</span> Make sure all required fields are filled.
+              <span className="font-medium">✨ Ready to publish?</span> Make sure all required fields are filled.
             </div>
             
             <button
@@ -558,10 +1055,7 @@ const AddTrek = () => {
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Add {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
+                  🚀 Add {itemType.charAt(0).toUpperCase() + itemType.slice(1)}
                 </>
               )}
             </button>

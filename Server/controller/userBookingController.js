@@ -3,6 +3,7 @@ import UserBooking from "../models/UserBooking.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import transporter from "../config/nodemailer.js";
+import { isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -30,10 +31,16 @@ const isValidPhoneNumber = (phone) => {
   return /^[0-9]{10}$/.test(phone);
 };
 
+const getStartOfToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
 // Create booking and initiate Razorpay
 export const createBooking = async (req, res) => {
   try {
-    const { name, email, phoneNumber, city, membersCount, trekId } = req.body;
+    const { name, email, phoneNumber, city, membersCount, trekId, travelerDetails, selectedDateWindow } = req.body;
+    const totalMembers = Number(membersCount);
 
     if (!name || !email || !phoneNumber || !city || !membersCount || !trekId) {
       return res.status(400).json({
@@ -50,10 +57,20 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    if (membersCount < 1 || membersCount > 20) {
+    if (totalMembers < 1 || totalMembers > 20) {
       return res.status(400).json({
         success: false,
         message: "Members count must be between 1 and 20",
+      });
+    }
+
+    let normalizedTravelerDetails;
+    try {
+      normalizedTravelerDetails = normalizeTravelerDetails(travelerDetails, totalMembers);
+    } catch (travelerError) {
+      return res.status(400).json({
+        success: false,
+        message: travelerError.message,
       });
     }
 
@@ -62,6 +79,31 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Trek not found",
+      });
+    }
+
+    const availableDateWindows = trek.dateWindows && trek.dateWindows.length > 0
+      ? trek.dateWindows
+      : [{ label: "Primary Schedule", startDate: trek.startDate, endDate: trek.endDate }];
+
+    const todayStart = getStartOfToday();
+    const futureDateWindows = availableDateWindows.filter((window) => new Date(window.endDate) >= todayStart);
+    if (futureDateWindows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No future date windows are available for this trek",
+      });
+    }
+
+    const chosenDateWindow = selectedDateWindow
+      ? futureDateWindows.find((window) => isMatchingDateWindow(window, selectedDateWindow))
+      : futureDateWindows[0];
+
+    if (!chosenDateWindow) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected date window is not available",
+        availableDateWindows: futureDateWindows,
       });
     }
 
@@ -89,7 +131,7 @@ export const createBooking = async (req, res) => {
       cityPriceObj.discountPrice > 0
         ? cityPriceObj.discountPrice
         : cityPriceObj.price;
-    const finalPrice = pricePerMember * membersCount;
+    const finalPrice = pricePerMember * totalMembers;
 
     if (finalPrice <= 0) {
       return res.status(400).json({
@@ -106,8 +148,9 @@ export const createBooking = async (req, res) => {
       notes: {
         trekId: trek._id.toString(),
         city,
-        membersCount,
+        membersCount: totalMembers,
         bookingFor: name,
+        selectedDateWindow: JSON.stringify(chosenDateWindow),
       },
     });
 
@@ -116,7 +159,9 @@ export const createBooking = async (req, res) => {
       email, // ✅ new field
       phoneNumber,
       city,
-      membersCount,
+      membersCount: totalMembers,
+      travelerDetails: normalizedTravelerDetails,
+      selectedDateWindow: chosenDateWindow,
       trek: trek._id,
       finalPrice,
       razorpayOrderId: order.id,
@@ -325,10 +370,11 @@ export const verifyPayment = async (req, res) => {
             
             <div class="section-title">📅 Your Trek Details</div>
             <ul class="details-list">
-                <li><strong>Date:</strong> ${new Date(booking.trek.startDate).toDateString()} to ${new Date(booking.trek.endDate).toDateString()}</li>
+                <li><strong>Date:</strong> ${new Date(booking.selectedDateWindow?.startDate || booking.trek.startDate).toDateString()} to ${new Date(booking.selectedDateWindow?.endDate || booking.trek.endDate).toDateString()}</li>
                 <li><strong>Duration:</strong> ${booking.trek.duration || "As per itinerary"}</li>
                 <li><strong>Difficulty:</strong> ${booking.trek.difficulty || "Moderate"}</li>
                 <li><strong>Total Members:</strong> ${booking.membersCount}</li>
+                <li><strong>Selected Schedule:</strong> ${booking.selectedDateWindow?.label || "Primary Schedule"}</li>
                 <li><strong>Departure City:</strong> ${booking.city}</li>
             </ul>
             
@@ -484,7 +530,7 @@ const adminMailOptions = {
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Dates</div>
-                    <div class="detail-value">${new Date(booking.trek.startDate).toDateString()} - ${new Date(booking.trek.endDate).toDateString()}</div>
+                    <div class="detail-value">${new Date(booking.selectedDateWindow?.startDate || booking.trek.startDate).toDateString()} - ${new Date(booking.selectedDateWindow?.endDate || booking.trek.endDate).toDateString()}</div>
                 </div>
             </div>
             

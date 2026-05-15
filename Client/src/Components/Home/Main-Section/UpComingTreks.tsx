@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import DOMPurify from "dompurify";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -19,6 +18,7 @@ interface Trek {
   location: string;
   duration: string;
   difficulty: string;
+  specialType?: string;
   startDate: string;
   endDate: string;
   thumbnail: string;
@@ -96,10 +96,21 @@ const UpcomingTreks: React.FC = () => {
   const filteredTreks = getFilteredTreks();
   const uniqueCities = getUniqueCities();
 
+  const treksGroupedByType = useMemo(() => {
+    return filteredTreks.reduce<Record<string, Trek[]>>((groups, trek) => {
+      const typeKey = trek.specialType?.trim() || "Other Treks";
+      if (!groups[typeKey]) {
+        groups[typeKey] = [];
+      }
+      groups[typeKey].push(trek);
+      return groups;
+    }, {});
+  }, [filteredTreks]);
+
   const handleBookNow = (trek: Trek) => {
     toast.info(`Redirecting to booking for ${trek.name}`, {
       position: "top-right",
-      autoClose: 2000,
+      autoClose: 1000,
       hideProgressBar: false,
       closeOnClick: true,
       pauseOnHover: true,
@@ -108,7 +119,7 @@ const UpcomingTreks: React.FC = () => {
     });
     setTimeout(() => {
       window.location.href = `/book/${trek._id}`;
-    }, 2000);
+    }, 1000);
   };
 
   const formatDate = (dateString: string) => {
@@ -117,6 +128,14 @@ const UpcomingTreks: React.FC = () => {
       month: 'short', 
       day: 'numeric', 
       year: 'numeric' 
+    });
+  };
+
+  const formatDateShort = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
     });
   };
 
@@ -331,8 +350,24 @@ const UpcomingTreks: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredTreks.map((trek) => {
+          <div className="space-y-12">
+            {Object.entries(treksGroupedByType).map(([typeName, typeTreks]) => (
+              <section key={typeName} className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900">{typeName}</h3>
+                    <p className="text-sm md:text-base text-gray-600 mt-1">
+                      {typeTreks.length} trek{typeTreks.length !== 1 ? "s" : ""} available in this category
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-gray-200 shadow-sm text-sm font-semibold text-sky-700">
+                    <Mountain className="w-4 h-4" />
+                    Trek Type
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {typeTreks.map((trek) => {
               const prices = trek.cityPricing?.map(cp => Number(cp.discountPrice || cp.price)) || [];
               const minPrice = prices.length > 0 ? Math.min(...prices) : trek.price || "N/A";
               
@@ -458,8 +493,39 @@ const UpcomingTreks: React.FC = () => {
                           <Star className="w-4 h-4 mr-2 text-sky-600 flex-shrink-0 fill-current" />
                           <span className="text-sm font-bold text-sky-800">Trek Highlights</span>
                         </div>
-                        <div className="text-sm text-sky-800 line-clamp-3 leading-relaxed font-medium">
-                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(trek.highlights) }} />
+                        <div className="grid grid-cols-2 gap-3">
+                          {(() => {
+                            const highlightsArray = typeof trek.highlights === 'string' 
+                              ? trek.highlights.split(',').map(h => h.trim()).filter(h => h)
+                              : trek.highlights;
+                            return highlightsArray.map((highlight, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <span className="text-sky-600 font-bold flex-shrink-0 mt-0.5">•</span>
+                                <span className="text-xs text-sky-800 font-medium leading-tight">
+                                  {highlight}
+                                </span>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Available Dates */}
+                    {trek.startDate && trek.endDate && (
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-200">
+                        <div className="flex items-center mb-3">
+                          <Calendar className="w-4 h-4 mr-2 text-emerald-600 flex-shrink-0" />
+                          <span className="text-sm font-bold text-emerald-800">Available Dates</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="inline-block bg-white text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 shadow-sm">
+                            {formatDateShort(trek.startDate)}
+                          </span>
+                          <span className="inline-block text-emerald-600 text-xs font-bold">-</span>
+                          <span className="inline-block bg-white text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-200 shadow-sm">
+                            {formatDateShort(trek.endDate)}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -492,7 +558,10 @@ const UpcomingTreks: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
 

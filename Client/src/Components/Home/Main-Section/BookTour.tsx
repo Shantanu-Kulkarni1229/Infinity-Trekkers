@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
-import { MapPin, Clock, Users, Star, ChevronDown, ChevronUp, User } from "lucide-react";
+import DOMPurify from "dompurify";
+import { BadgeCheck, CalendarDays, Clock, MapPin, Route, Sparkles, Star, Users, ChevronDown, ChevronUp, User } from "lucide-react";
 import "react-toastify/dist/ReactToastify.css";
 
 // Razorpay types
@@ -48,10 +49,19 @@ interface Tour {
   highlights: string | string[];
   inclusions: string[];
   exclusions: string[];
+  startDate?: string;
+  endDate?: string;
+  dateWindows?: Array<{
+    label?: string;
+    startDate: string;
+    endDate: string;
+  }>;
   itinerary: Array<{
     day: number;
     title: string;
     description: string;
+    meals?: string;
+    accommodation?: string;
   }>;
   thumbnail: string;
   images: string[];
@@ -77,6 +87,22 @@ interface BookingFormData {
   membersCount: number;
 }
 
+interface DateWindow {
+  label?: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface TravelerDetail {
+  name: string;
+  phoneNumber: string;
+}
+
+const getStartOfToday = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
 const BookTour = () => {
   const { tourId } = useParams<{ tourId: string }>();
   const [tour, setTour] = useState<Tour | null>(null);
@@ -87,6 +113,11 @@ const BookTour = () => {
   const [error, setError] = useState<string>("");
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
   const [isHighlightsExpanded, setIsHighlightsExpanded] = useState<boolean>(false);
+  const [availableDateWindows, setAvailableDateWindows] = useState<DateWindow[]>([]);
+  const [selectedDateWindowIndex, setSelectedDateWindowIndex] = useState<string>("");
+  const [travelerDetails, setTravelerDetails] = useState<TravelerDetail[]>([
+    { name: "", phoneNumber: "" },
+  ]);
 
   const navigate = useNavigate();
 
@@ -140,6 +171,21 @@ const BookTour = () => {
           }
           
           setTour(tourData);
+
+          const fallbackWindows = tourData.dateWindows && tourData.dateWindows.length > 0
+            ? tourData.dateWindows
+            : [{ label: "Primary Schedule", startDate: tourData.startDate, endDate: tourData.endDate } as DateWindow];
+
+          const todayStart = getStartOfToday();
+          const futureWindows = fallbackWindows.filter((window) => new Date(window.endDate) >= todayStart);
+          setAvailableDateWindows(futureWindows);
+          setSelectedDateWindowIndex(futureWindows.length > 0 ? "0" : "");
+
+          if (futureWindows.length === 0) {
+            setError("No future booking dates are available for this tour.");
+          } else {
+            setError("");
+          }
           
           const cities = tourData.cityPricing ? 
             [...new Set(tourData.cityPricing.map(cp => cp.city))] : [];
@@ -179,11 +225,35 @@ const BookTour = () => {
     }
   }, [formData.city, formData.membersCount, tour]);
 
+  useEffect(() => {
+    setTravelerDetails((prev) => {
+      const nextCount = Math.max(1, Number(formData.membersCount) || 1);
+      if (prev.length === nextCount) return prev;
+      if (prev.length > nextCount) return prev.slice(0, nextCount);
+      return [
+        ...prev,
+        ...Array.from({ length: nextCount - prev.length }, () => ({ name: "", phoneNumber: "" })),
+      ];
+    });
+  }, [formData.membersCount]);
+
   const handleInputChange = (field: keyof BookingFormData, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleTravelerChange = (
+    index: number,
+    field: keyof TravelerDetail,
+    value: string
+  ) => {
+    setTravelerDetails((prev) =>
+      prev.map((traveler, travelerIndex) =>
+        travelerIndex === index ? { ...traveler, [field]: value } : traveler
+      )
+    );
   };
 
   const validateForm = (): boolean => {
@@ -223,6 +293,20 @@ const BookTour = () => {
       return;
     }
 
+    const selectedDateWindow = selectedDateWindowIndex !== "" ? availableDateWindows[Number(selectedDateWindowIndex)] : undefined;
+    if (availableDateWindows.length > 0 && !selectedDateWindow) {
+      toast.error("Please select a tour date");
+      return;
+    }
+
+    const incompleteTraveler = travelerDetails.find(
+      (traveler) => !traveler.name.trim() || !/^\d{10}$/.test(traveler.phoneNumber.trim())
+    );
+    if (incompleteTraveler) {
+      toast.error("Please enter valid name and 10-digit phone for each traveler");
+      return;
+    }
+
     setBookingProcessing(true);
 
     try {
@@ -232,7 +316,9 @@ const BookTour = () => {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         city: formData.city,
-        membersCount: formData.membersCount
+        membersCount: formData.membersCount,
+        travelerDetails,
+        selectedDateWindow,
       };
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/universal-bookings/book`, {
@@ -329,12 +415,17 @@ const BookTour = () => {
     return colors[type] || 'text-gray-600 bg-gray-50 border-gray-200';
   };
 
+  const sanitizeHtml = (html: string): string => DOMPurify.sanitize(html);
+
+  const activeDateWindow = selectedDateWindowIndex !== "" ? availableDateWindows[Number(selectedDateWindowIndex)] : availableDateWindows[0];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">Loading tour details...</p>
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600 mx-auto mb-4"></div>
+          <p className="text-slate-700 text-lg font-semibold tracking-tight">Loading your itinerary...</p>
+          <p className="text-slate-500 text-sm mt-2">Preparing the booking page and trip details.</p>
         </div>
       </div>
     );
@@ -342,13 +433,16 @@ const BookTour = () => {
 
   if (error || !tour) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Tour Not Found</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl shadow-sky-100/60 backdrop-blur">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+            <BadgeCheck className="h-8 w-8" />
+          </div>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-3">Tour Not Found</h2>
+          <p className="text-slate-600 mb-6 leading-7">{error}</p>
           <button
             onClick={() => navigate("/upcoming-tours")}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center justify-center rounded-full bg-sky-600 px-6 py-3 font-semibold text-white shadow-lg shadow-sky-200 transition hover:bg-sky-700"
           >
             Browse Tours
           </button>
@@ -358,21 +452,24 @@ const BookTour = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-sky-100 py-8">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-white to-slate-50 py-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.20),_transparent_58%)]" />
+      <div className="pointer-events-none absolute -left-20 top-40 h-64 w-64 rounded-full bg-sky-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-72 h-72 w-72 rounded-full bg-blue-100/40 blur-3xl" />
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-xl shadow-xl overflow-hidden">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="overflow-hidden rounded-[2rem] border border-white/70 bg-white/90 shadow-2xl shadow-sky-100/70 backdrop-blur">
           {/* Tour Header */}
           <div className="relative">
             <img
               src={tour.thumbnail || "/api/placeholder/1200/400"}
               alt={tour.name}
-              className="w-full h-64 md:h-80 object-cover"
+              className="h-72 w-full object-cover md:h-[32rem]"
             />
-            <div className="absolute inset-0 bg-black bg-opacity-40 flex items-end">
-              <div className="p-6 text-white">
-                <div className="flex gap-3 mb-4">
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex items-end">
+              <div className="max-w-4xl p-6 text-white sm:p-8 lg:p-10">
+                <div className="mb-4 flex flex-wrap gap-3">
                   <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getTypeColor(tour.tourType)}`}>
                     {tour.tourType}
                   </span>
@@ -380,23 +477,28 @@ const BookTour = () => {
                     {tour.difficulty}
                   </span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-2">{tour.name}</h1>
-                <div className="flex items-center gap-6 text-lg">
-                  <div className="flex items-center">
-                    <MapPin className="w-5 h-5 mr-2" />
+                <h1 className="max-w-3xl text-4xl font-black tracking-tight text-white drop-shadow md:text-6xl">
+                  {tour.name}
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-100/90 sm:text-base md:text-lg">
+                  Designed as a calm, easy-to-scan booking page with a clear itinerary, essential trip details, and a focused checkout flow.
+                </p>
+                <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-slate-100/90 sm:text-base">
+                  <div className="flex items-center rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+                    <MapPin className="mr-2 h-4 w-4" />
                     {tour.location}
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="w-5 h-5 mr-2" />
+                  <div className="flex items-center rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+                    <Clock className="mr-2 h-4 w-4" />
                     {tour.duration}
                   </div>
-                  <div className="flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
+                  <div className="flex items-center rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+                    <Users className="mr-2 h-4 w-4" />
                     Max {tour.maxGroupSize}
                   </div>
                   {tour.rating > 0 && (
-                    <div className="flex items-center">
-                      <Star className="w-5 h-5 mr-2 text-yellow-400" />
+                    <div className="flex items-center rounded-full bg-white/10 px-4 py-2 backdrop-blur-sm">
+                      <Star className="mr-2 h-4 w-4 text-yellow-300" />
                       {tour.rating}
                     </div>
                   )}
@@ -405,21 +507,54 @@ const BookTour = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 p-4 sm:p-6 lg:p-8">
+          <div className="grid grid-cols-2 gap-4 border-b border-slate-200/80 bg-slate-50/70 p-4 sm:grid-cols-4 sm:p-6 lg:p-8">
+            <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm shadow-sky-50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Travel window</p>
+              <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">{activeDateWindow ? new Date(activeDateWindow.startDate).toLocaleDateString() : "Dates pending"}</p>
+              <p className="text-sm text-slate-500">{activeDateWindow ? new Date(activeDateWindow.endDate).toLocaleDateString() : "Select a date to continue"}</p>
+            </div>
+            <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm shadow-sky-50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Departure cities</p>
+              <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">{departureCities.length}</p>
+              <p className="text-sm text-slate-500">pickup points available</p>
+            </div>
+            <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm shadow-sky-50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Itinerary stops</p>
+              <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">{tour.itinerary?.length || 0}</p>
+              <p className="text-sm text-slate-500">day-by-day plan</p>
+            </div>
+            <div className="rounded-2xl border border-sky-100 bg-white p-4 shadow-sm shadow-sky-50">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Booking style</p>
+              <p className="mt-2 text-lg font-bold tracking-tight text-slate-900">Secure checkout</p>
+              <p className="text-sm text-slate-500">Razorpay protected</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-12 lg:gap-8 lg:p-8">
             {/* Tour Details */}
             <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
               {/* Description */}
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="text-xl font-bold mb-4">About This Tour</h3>
-                <div className={`text-gray-700 ${!isDescriptionExpanded ? 'line-clamp-3' : ''}`}>
-                  {tour.description}
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm shadow-sky-50/40">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Tour story</p>
+                    <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">About This Tour</h3>
+                  </div>
+                  <div className="hidden rounded-full bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 sm:flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Curated trip overview
+                  </div>
                 </div>
+                <div
+                  className={`prose prose-sky max-w-none text-slate-700 leading-7 ${!isDescriptionExpanded ? 'line-clamp-4 overflow-hidden' : ''}`}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(tour.description) }}
+                />
                 <button
                   onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                  className="mt-2 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-600 transition hover:text-sky-800"
                 >
-                  {isDescriptionExpanded ? 'Show Less' : 'Show More'}
-                  {isDescriptionExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                  {isDescriptionExpanded ? 'Show less' : 'Read the full story'}
+                  {isDescriptionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
               </div>
 
@@ -434,26 +569,31 @@ const BookTour = () => {
                 if (highlightsArray.length === 0) return null;
 
                 return (
-                  <div className="bg-blue-50 p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4 text-blue-800">Tour Highlights</h3>
-                    <ul className="space-y-2">
+                  <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-sky-50 to-white p-6 shadow-sm shadow-sky-50/40">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Top reasons to go</p>
+                        <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">Tour Highlights</h3>
+                      </div>
+                    </div>
+                    <ul className="grid gap-3 sm:grid-cols-2">
                       {(isHighlightsExpanded 
                         ? highlightsArray 
-                        : highlightsArray.slice(0, 4)
+                        : highlightsArray.slice(0, 6)
                       ).map((highlight: string, index: number) => (
-                        <li key={index} className="flex items-start text-blue-700">
-                          <span className="text-blue-500 mr-2 mt-1">•</span>
-                          {highlight}
+                        <li key={index} className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-white px-4 py-3 text-slate-700 shadow-sm">
+                          <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700">{index + 1}</span>
+                          <span className="text-sm leading-6 text-justify">{highlight}</span>
                         </li>
                       ))}
                     </ul>
-                    {highlightsArray.length > 4 && (
+                    {highlightsArray.length > 6 && (
                       <button
                         onClick={() => setIsHighlightsExpanded(!isHighlightsExpanded)}
-                        className="mt-2 text-blue-600 hover:text-blue-800 font-medium flex items-center"
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-600 transition hover:text-sky-800"
                       >
-                        {isHighlightsExpanded ? 'Show Less' : `Show ${highlightsArray.length - 4} More`}
-                        {isHighlightsExpanded ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />}
+                        {isHighlightsExpanded ? 'Show less' : `Show ${highlightsArray.length - 6} more`}
+                        {isHighlightsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
                     )}
                   </div>
@@ -463,13 +603,18 @@ const BookTour = () => {
               {/* Inclusions/Exclusions */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {tour.inclusions && tour.inclusions.length > 0 && (
-                  <div className="bg-green-50 p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4 text-green-800">Inclusions</h3>
-                    <ul className="space-y-2">
+                  <div className="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 shadow-sm shadow-emerald-50/40">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-500">What you get</p>
+                        <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-900">Inclusions</h3>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
                       {tour.inclusions.map((inclusion, index) => (
-                        <li key={index} className="flex items-start text-green-700">
-                          <span className="text-green-500 mr-2 mt-1">✓</span>
-                          {inclusion}
+                        <li key={index} className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-emerald-800 shadow-sm">
+                          <span className="mt-1 text-emerald-500">✓</span>
+                          <span className="text-sm leading-6">{inclusion}</span>
                         </li>
                       ))}
                     </ul>
@@ -477,13 +622,18 @@ const BookTour = () => {
                 )}
                 
                 {tour.exclusions && tour.exclusions.length > 0 && (
-                  <div className="bg-red-50 p-6 rounded-lg">
-                    <h3 className="text-xl font-bold mb-4 text-red-800">Exclusions</h3>
-                    <ul className="space-y-2">
+                  <div className="rounded-3xl border border-rose-100 bg-gradient-to-br from-rose-50 to-white p-6 shadow-sm shadow-rose-50/40">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-rose-500">Not included</p>
+                        <h3 className="mt-2 text-xl font-bold tracking-tight text-slate-900">Exclusions</h3>
+                      </div>
+                    </div>
+                    <ul className="space-y-3">
                       {tour.exclusions.map((exclusion, index) => (
-                        <li key={index} className="flex items-start text-red-700">
-                          <span className="text-red-500 mr-2 mt-1">✗</span>
-                          {exclusion}
+                        <li key={index} className="flex items-start gap-3 rounded-2xl bg-white px-4 py-3 text-rose-800 shadow-sm">
+                          <span className="mt-1 text-rose-500">✕</span>
+                          <span className="text-sm leading-6">{exclusion}</span>
                         </li>
                       ))}
                     </ul>
@@ -493,13 +643,55 @@ const BookTour = () => {
 
               {/* Itinerary */}
               {tour.itinerary && tour.itinerary.length > 0 && (
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-xl font-bold mb-4">Itinerary</h3>
-                  <div className="space-y-4">
-                    {tour.itinerary.map((day, index) => (
-                      <div key={index} className="border-l-4 border-blue-500 pl-4">
-                        <h4 className="font-bold text-lg text-gray-800">Day {day.day}: {day.title}</h4>
-                        <p className="text-gray-600 mt-1">{day.description}</p>
+                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm shadow-sky-50/40">
+                  <div className="mb-5 flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day-by-day route</p>
+                      <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">Itinerary</h3>
+                      <p className="mt-2 text-sm leading-7 text-slate-600">Read this like a real trip plan. Each day is laid out as a stop on the journey, with meals and stay details where available.</p>
+                    </div>
+                    <div className="hidden items-center gap-2 rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-semibold text-sky-700 shadow-sm sm:flex">
+                      <Route className="h-4 w-4" />
+                      {tour.itinerary.length} day route
+                    </div>
+                  </div>
+                  <div className="relative space-y-4 pl-1 before:absolute before:left-[1.15rem] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-gradient-to-b before:from-sky-300 before:to-sky-100">
+                    {tour.itinerary
+                      .slice()
+                      .sort((a, b) => Number(a.day) - Number(b.day))
+                      .map((day, index) => (
+                      <div key={index} className="relative flex gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+                        <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 text-base font-black text-white shadow-lg shadow-sky-200">
+                          {day.day}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day {day.day}</p>
+                              <h4 className="mt-1 text-lg font-bold tracking-tight text-slate-900">{day.title}</h4>
+                            </div>
+                            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                              Stop {index + 1}
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm leading-7 text-slate-600 text-justify">{day.description}</p>
+                          {(day.meals || day.accommodation) && (
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              {day.meals && (
+                                <div className="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-900">
+                                  <span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Meals</span>
+                                  <span className="mt-1 block leading-6">{day.meals}</span>
+                                </div>
+                              )}
+                              {day.accommodation && (
+                                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/80 px-4 py-3 text-sm text-indigo-900">
+                                  <span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-500">Stay</span>
+                                  <span className="mt-1 block leading-6">{day.accommodation}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -509,96 +701,125 @@ const BookTour = () => {
 
             {/* Booking Form */}
             <div className="lg:col-span-4 order-1 lg:order-2">
-              <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-100 to-transparent rounded-full -translate-y-12 -translate-x-12 sm:-translate-y-16 sm:-translate-x-16"></div>
+              <div className="sticky top-4 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-xl shadow-sky-50 sm:rounded-3xl sm:p-6 lg:top-6 lg:p-8">
+                <div className="absolute top-0 left-0 h-24 w-24 rounded-full bg-gradient-to-br from-sky-100 to-transparent -translate-x-12 -translate-y-12 sm:h-32 sm:w-32 sm:-translate-x-16 sm:-translate-y-16"></div>
+                <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-gradient-to-bl from-indigo-100 to-transparent translate-x-8 -translate-y-8 sm:h-40 sm:w-40 sm:translate-x-12 sm:-translate-y-12"></div>
                 
                 <div className="relative z-10">
-                  <div className="flex items-center mb-6 sm:mb-8">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center mr-3 sm:mr-4">
-                      <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
+                  <div className="mb-6 flex items-center sm:mb-8">
+                    <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 sm:mr-4 sm:h-12 sm:w-12">
+                      <CalendarDays className="h-5 w-5 text-sky-600 sm:h-6 sm:w-6" />
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Booking Form</h2>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Reserve your slot</p>
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Booking Form</h2>
+                    </div>
                   </div>
 
-                  <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-l-4 border-blue-500">
-                    <div className="text-2xl sm:text-3xl font-bold text-blue-600 mb-2">
-                      ₹{finalPrice.toLocaleString()}
+                  <div className="mb-6 sm:mb-8 rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50 to-indigo-50 p-4 sm:p-6">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Total amount</p>
+                        <div className="mt-1 text-3xl font-black tracking-tight text-sky-700 sm:text-4xl">
+                          ₹{finalPrice.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="hidden rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm sm:block">
+                        GST included
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      Total amount (including GST)
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-sky-700">
+                      <span className="rounded-full bg-white px-3 py-2 shadow-sm">Secure checkout</span>
+                      <span className="rounded-full bg-white px-3 py-2 shadow-sm">Fast confirmation</span>
+                      <span className="rounded-full bg-white px-3 py-2 shadow-sm">Razorpay</span>
                     </div>
                   </div>
 
                   <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                    {/* Name Input */}
                     <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Full Name</label>
                       <div className="relative">
                         <input
                           type="text"
                           placeholder="Enter your full name"
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          className="w-full rounded-xl border-2 border-slate-200 p-3 text-sm transition-all duration-300 placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
                           required
                         />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                          <User className="h-4 w-4 text-slate-400 transition-colors group-focus-within:text-sky-500 sm:h-5 sm:w-5" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Email Input */}
+                    {availableDateWindows.length > 0 && (
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Travel Date</label>
+                        <div className="relative">
+                          <select
+                            value={selectedDateWindowIndex}
+                            onChange={(e) => setSelectedDateWindowIndex(e.target.value)}
+                            className="w-full appearance-none rounded-xl border-2 border-slate-200 bg-white p-3 text-sm transition-all duration-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
+                            required
+                          >
+                            <option value="">Select travel date</option>
+                            {availableDateWindows.map((window, index) => (
+                              <option key={`${window.startDate}-${window.endDate}-${index}`} value={index}>
+                                {(window.label?.trim() ? window.label : `Batch ${index + 1}`) + " - "}
+                                {new Date(window.startDate).toLocaleDateString()} to {new Date(window.endDate).toLocaleDateString()}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                            <ChevronDown className="h-4 w-4 text-slate-400 sm:h-5 sm:w-5" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
                       <div className="relative">
                         <input
                           type="email"
                           placeholder="Enter your email address"
                           value={formData.email}
                           onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          className="w-full rounded-xl border-2 border-slate-200 p-3 text-sm transition-all duration-300 placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
                           required
                         />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-                          </svg>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                          <User className="h-4 w-4 text-slate-400 transition-colors group-focus-within:text-sky-500 sm:h-5 sm:w-5" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Phone Input */}
                     <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
                       <div className="relative">
                         <input
                           type="tel"
                           placeholder="Enter your phone number"
                           value={formData.phoneNumber}
                           onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          className="w-full rounded-xl border-2 border-slate-200 p-3 text-sm transition-all duration-300 placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
                           maxLength={10}
                           required
                         />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                          </svg>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                          <User className="h-4 w-4 text-slate-400 transition-colors group-focus-within:text-sky-500 sm:h-5 sm:w-5" />
                         </div>
                       </div>
                     </div>
 
-                    {/* City Selection */}
                     <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Departure City</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Departure City</label>
                       <div className="relative">
                         <select
                           value={formData.city}
                           onChange={(e) => handleInputChange('city', e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-sm sm:text-base appearance-none bg-white"
+                          className="w-full appearance-none rounded-xl border-2 border-slate-200 bg-white p-3 text-sm transition-all duration-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
                           required
                         >
                           <option value="">Select departure city</option>
@@ -608,15 +829,14 @@ const BookTour = () => {
                             </option>
                           ))}
                         </select>
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                          <MapPin className="h-4 w-4 text-slate-400 transition-colors group-focus-within:text-sky-500 sm:h-5 sm:w-5" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Members Count Input */}
                     <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Members</label>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Number of Members</label>
                       <div className="relative">
                         <input
                           type="number"
@@ -625,30 +845,58 @@ const BookTour = () => {
                           placeholder="Enter number of members"
                           value={formData.membersCount}
                           onChange={(e) => handleInputChange('membersCount', parseInt(e.target.value) || 1)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                          className="w-full rounded-xl border-2 border-slate-200 p-3 text-sm transition-all duration-300 placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
                           required
                         />
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
-                          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                          <Users className="h-4 w-4 text-slate-400 transition-colors group-focus-within:text-sky-500 sm:h-5 sm:w-5" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Pricing Display */}
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Traveler Details ({formData.membersCount} member{formData.membersCount > 1 ? "s" : ""})
+                      </label>
+                      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                        {travelerDetails.map((traveler, index) => (
+                          <div key={`tour-traveler-${index}`} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-2">
+                            <input
+                              type="text"
+                              value={traveler.name}
+                              onChange={(e) => handleTravelerChange(index, "name", e.target.value)}
+                              placeholder={`Member ${index + 1} name`}
+                              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm transition-all focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                              required
+                            />
+                            <input
+                              type="tel"
+                              value={traveler.phoneNumber}
+                              onChange={(e) => handleTravelerChange(index, "phoneNumber", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                              placeholder={`Member ${index + 1} phone`}
+                              className="w-full rounded-lg border border-slate-300 p-2.5 text-sm transition-all focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+                              maxLength={10}
+                              required
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     {formData.city && (
-                      <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-xl border border-green-200">
-                        <h4 className="font-semibold text-gray-800 mb-2 text-sm">Pricing Details:</h4>
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Price per person:</span>
-                            <span className="font-medium">
+                      <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-sky-50 p-4">
+                        <h4 className="mb-2 text-sm font-semibold text-slate-800">Pricing Details</h4>
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-600">Price per person</span>
+                            <span className="font-medium text-slate-900">
                               {(() => {
                                 const cityPricing = tour.cityPricing?.find(cp => cp.city === formData.city);
                                 if (cityPricing?.discountPrice) {
                                   return (
                                     <>
-                                      <span className="line-through text-gray-400 mr-2">₹{cityPricing.price}</span>
-                                      <span className="text-green-600">₹{cityPricing.discountPrice}</span>
+                                      <span className="mr-2 text-slate-400 line-through">₹{cityPricing.price}</span>
+                                      <span className="text-emerald-600">₹{cityPricing.discountPrice}</span>
                                     </>
                                   );
                                 }
@@ -656,42 +904,39 @@ const BookTour = () => {
                               })()}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Members:</span>
-                            <span className="font-medium">{formData.membersCount}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-slate-600">Members</span>
+                            <span className="font-medium text-slate-900">{formData.membersCount}</span>
                           </div>
-                          <div className="flex justify-between items-center text-base font-bold border-t border-gray-200 pt-2">
-                            <span>Total Amount:</span>
-                            <span className="text-blue-600">₹{finalPrice.toLocaleString()}</span>
+                          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-base font-bold">
+                            <span>Total amount</span>
+                            <span className="text-sky-700">₹{finalPrice.toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Submit Button */}
                     <button
                       type="submit"
                       disabled={bookingProcessing}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl"
+                      className="w-full rounded-xl bg-gradient-to-r from-sky-600 to-blue-700 px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-sky-200 transition-all duration-300 hover:from-sky-700 hover:to-blue-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-lg sm:text-base"
                     >
                       {bookingProcessing ? (
                         <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          <div className="mr-2 h-5 w-5 animate-spin rounded-full border-b-2 border-white"></div>
                           Processing...
                         </div>
                       ) : (
                         <div className="flex items-center justify-center">
-                          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
+                          <BadgeCheck className="mr-2 h-5 w-5" />
                           Book Now & Pay Securely
                         </div>
                       )}
                     </button>
                     
-                    <div className="text-xs text-gray-500 text-center space-y-1">
-                      <p>🔒 Secure payment gateway</p>
-                      <p>💯 100% safe & trusted booking</p>
+                    <div className="space-y-1 text-center text-xs text-slate-500">
+                      <p>Secure payment gateway</p>
+                      <p>Trusted booking flow with instant confirmation</p>
                     </div>
                   </form>
                 </div>

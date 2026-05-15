@@ -22,6 +22,9 @@ type Booking = {
   status: string;
   bookedOn?: string;
   itemType?: "trek" | "tour";
+  amount?: number;
+  travelerDetails?: Array<{ name: string; phoneNumber: string }>;
+  selectedDateWindow?: { label?: string; startDate: string; endDate: string };
 };
 
 type ItemDetails = {
@@ -52,6 +55,7 @@ const Bookings = () => {
   const [sortBy, setSortBy] = useState<"name" | "members" | "date">("date");
   const [clearingBookings, setClearingBookings] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
   const headers = useMemo(() => ({ "x-admin-key": localStorage.getItem("adminKey") || "" }), []);
@@ -573,83 +577,111 @@ const Bookings = () => {
                     </p>
                   </div>
 
-                  {/* Bookings Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {filteredBookings.map((booking) => (
-                      <div key={booking.id} className="bg-gray-50 rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all duration-200">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                              {booking.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-lg text-gray-900">
-                                <RenderHTML html={booking.name} />
-                              </h4>
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span className="text-sm">{booking.city}</span>
+                  {/* Booking List with Expandable Details */}
+                  {bookings.length > 0 && (
+                    <div className="mt-8 space-y-4">
+                      {filteredBookings.map((booking) => (
+                        <div
+                          key={booking.id}
+                          onClick={() => setExpandedBookingId(expandedBookingId === booking.id ? null : booking.id)}
+                          className={`bg-white rounded-xl p-5 border-2 cursor-pointer transition-all duration-200 ${
+                            expandedBookingId === booking.id
+                              ? 'border-blue-500 shadow-lg bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {booking.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 truncate">
+                                  <RenderHTML html={booking.name} />
+                                </h4>
+                                <div className="flex items-center gap-2 text-gray-600 text-sm mt-1">
+                                  <span>{booking.phone}</span>
+                                  <span>•</span>
+                                  <span>{booking.city}</span>
+                                  <span>•</span>
+                                  <span>{booking.members} members</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          
-                          <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                            {booking.status}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                              <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                                {booking.status}
+                              </div>
+                              <svg
+                                className={`w-5 h-5 text-gray-400 transition-transform ${expandedBookingId === booking.id ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                               </svg>
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Phone</p>
-                              <p className="font-medium text-gray-900">{booking.phone}</p>
-                            </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                              </svg>
+                          {/* Expanded Details */}
+                          {expandedBookingId === booking.id && (
+                            <div className="mt-5 pt-5 border-t border-gray-200 space-y-4">
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Amount Paid</p>
+                                  <p className="font-bold text-green-600">₹{booking.amount || 0}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Booked On</p>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {booking.bookedOn
+                                      ? new Date(booking.bookedOn).toLocaleDateString('en-IN')
+                                      : 'N/A'}
+                                  </p>
+                                </div>
+                                <div className="col-span-2">
+                                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Selected Batch</p>
+                                  <p className="font-medium text-gray-900">
+                                    {booking.selectedDateWindow?.label || 'Primary Schedule'}
+                                  </p>
+                                  {booking.selectedDateWindow && (
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {new Date(booking.selectedDateWindow.startDate).toLocaleDateString('en-IN')} - {new Date(booking.selectedDateWindow.endDate).toLocaleDateString('en-IN')}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Member List */}
+                              <div>
+                                <h5 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                                  <span>👥 Members</span>
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{booking.members}</span>
+                                </h5>
+                                <div className="space-y-2 max-h-32 overflow-y-auto">
+                                  {booking.travelerDetails && booking.travelerDetails.length > 0 ? (
+                                    booking.travelerDetails.map((traveler, idx) => (
+                                      <div key={idx} className="flex items-start gap-3 p-2 bg-gray-50 rounded border border-gray-200">
+                                        <span className="text-xs font-bold text-purple-600 bg-purple-100 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0">
+                                          {idx + 1}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium text-gray-900 text-sm">{traveler.name}</p>
+                                          <p className="text-xs text-gray-600">{traveler.phoneNumber}</p>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-600 text-sm">No member details available</p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Members</p>
-                              <p className="font-medium text-gray-900">{booking.members}</p>
-                            </div>
-                          </div>
+                          )}
                         </div>
-
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4h3a1 1 0 011 1v9a2 2 0 01-2 2H7a2 2 0 01-2-2V8a1 1 0 011-1h2z" />
-                            </svg>
-                            <span className="text-sm">
-                              Booked on: {booking.bookedOn 
-                                ? new Date(booking.bookedOn).toLocaleDateString('en-IN', {
-                                    year: 'numeric',
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })
-                                : "N/A"
-                              }
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
+                      ))}
+                    </div>
+                  )}
                   {filteredBookings.length === 0 && (searchTerm || statusFilter !== "all") && (
                     <div className="text-center py-12">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

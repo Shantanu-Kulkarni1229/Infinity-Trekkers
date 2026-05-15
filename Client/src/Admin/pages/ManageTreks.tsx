@@ -1,5 +1,7 @@
 import  { useEffect, useState, useCallback, useMemo } from "react";
 import axios from "axios";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 
 type CityPricing = {
   city: string;
@@ -7,19 +9,85 @@ type CityPricing = {
   discountPrice?: number;
 };
 
+type DateWindow = {
+  label: string;
+  startDate: string;
+  endDate: string;
+};
+
+type ItineraryItem = {
+  day: string;
+  title: string;
+  description: string;
+  meals: string;
+  accommodation: string;
+};
+
+type CarryItem = {
+  item: string;
+  details: string;
+  required: boolean;
+};
+
+type PickupLocation = {
+  city: string;
+  location: string;
+  pickupTime: string;
+  notes: string;
+};
+
 type Item = {
   _id: string;
   name: string;
+  description: string;
   location: string;
   duration: string;
   difficulty: string;
+  specialType?: string;
   startDate: string;
   endDate: string;
+  highlights?: string[];
+  dateWindows?: Array<{
+    label?: string;
+    startDate: string;
+    endDate: string;
+  }>;
   isActive: boolean;
   thumbnail: string;
   cityPricing?: CityPricing[];
+  itinerary?: ItineraryItem[];
+  thingsToCarry?: CarryItem[];
+  pickupLocations?: PickupLocation[];
   type?: "trek" | "tour"; // Add type field for frontend identification
 };
+
+type EditForm = {
+  name: string;
+  description: string;
+  location: string;
+  duration: string;
+  difficulty: string;
+  specialType: string;
+  highlights: string[];
+  thumbnail: string;
+  isActive: boolean;
+  cityPricing: CityPricing[];
+  itinerary: ItineraryItem[];
+  thingsToCarry: CarryItem[];
+  pickupLocations: PickupLocation[];
+  dateWindows: DateWindow[];
+};
+
+const normalizeDifficulty = (value: string): "Easy" | "Moderate" | "Hard" | "" => {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === "easy") return "Easy";
+  if (normalized === "moderate") return "Moderate";
+  if (normalized === "hard") return "Hard";
+  return "";
+};
+
+const stripHtmlTags = (html: string): string => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+const allowedCities = ["Chh. Sambhajinagar", "Pune", "Mumbai"] as const;
 
 const ManageTreks = () => {
   const [items, setItems] = useState<Item[]>([]);
@@ -33,9 +101,41 @@ const ManageTreks = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string>("");
   const [actionLoading, setActionLoading] = useState<string>("");
   const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Item>>({});
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+
+  const specialTypes = [
+    "Pre Monsoon Special",
+    "Fireflies Festival Special",
+    "Technical Treks",
+    "Waterfall Treks",
+    "Jungle Treks",
+    "Outdoor Camping",
+    "One Day Treks",
+  ];
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL as string;
+  const quillModules = useMemo(() => ({
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ color: [] }, { background: [] }],
+      [{ align: [] }],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "clean"],
+    ],
+  }), []);
+  const quillFormats = useMemo(() => [
+    "header",
+    "bold",
+    "italic",
+    "underline",
+    "strike",
+    "color",
+    "background",
+    "align",
+    "list",
+    "link",
+  ], []);
   const headers = useMemo(() => ({
     "x-admin-key": localStorage.getItem("adminKey") || "",
   }), []);
@@ -107,17 +207,31 @@ const ManageTreks = () => {
   };
 
   const handleEdit = (item: Item) => {
+    // Get all date windows from the item
+    const allDateWindows = item.dateWindows && item.dateWindows.length > 0
+      ? item.dateWindows
+      : [{ label: "Batch 1", startDate: item.startDate, endDate: item.endDate }];
+
     setEditingItem(item);
     setEditForm({
       name: item.name,
+      description: item.description || "",
       location: item.location,
       duration: item.duration,
-      difficulty: item.difficulty,
-      startDate: item.startDate.split('T')[0], // Format for date input
-      endDate: item.endDate.split('T')[0],
+      difficulty: normalizeDifficulty(item.difficulty) || "Moderate",
+      specialType: item.specialType || "Technical Treks",
+      highlights: item.highlights || [],
       thumbnail: item.thumbnail,
       isActive: item.isActive,
-      cityPricing: item.cityPricing || []
+      cityPricing: item.cityPricing || [],
+      itinerary: item.itinerary || [],
+      thingsToCarry: item.thingsToCarry || [],
+      pickupLocations: item.pickupLocations || [],
+      dateWindows: allDateWindows.map((window) => ({
+        label: window.label || "",
+        startDate: new Date(window.startDate).toISOString().split("T")[0],
+        endDate: new Date(window.endDate).toISOString().split("T")[0],
+      }))
     });
   };
 
@@ -128,54 +242,169 @@ const ManageTreks = () => {
     const itemName = itemType === "trek" ? "Trek" : "Tour";
     
     // Basic validation
-    if (!editForm.name?.trim()) {
+    if (!editForm.name.trim()) {
       alert(`${itemName} name is required`);
       return;
     }
     
-    if (!editForm.location?.trim()) {
+    if (!editForm.location.trim()) {
       alert("Location is required");
       return;
     }
+
+    if (!editForm.description.trim()) {
+      alert(`${itemName} description is required`);
+      return;
+    }
+
+    const descriptionTextLength = stripHtmlTags(editForm.description).length;
+    if (descriptionTextLength < 20) {
+      alert(`${itemName} description must be at least 20 characters`);
+      return;
+    }
     
-    if (!editForm.duration?.trim()) {
+    if (!editForm.duration.trim()) {
       alert("Duration is required");
       return;
     }
     
-    if (!editForm.difficulty) {
+    const normalizedDifficulty = normalizeDifficulty(editForm.difficulty);
+    if (!normalizedDifficulty) {
       alert("Difficulty level is required");
       return;
     }
-    
-    if (!editForm.startDate || !editForm.endDate) {
-      alert("Start and end dates are required");
+
+    if (!editForm.specialType) {
+      alert("Special type is required");
       return;
     }
-    
-    if (new Date(editForm.startDate) >= new Date(editForm.endDate)) {
-      alert("End date must be after start date");
+
+    // Validate date windows
+    const validDateWindows = editForm.dateWindows.filter(dw => dw.startDate && dw.endDate);
+    if (validDateWindows.length === 0) {
+      alert("At least one date window with start and end date is required");
+      return;
+    }
+
+    if (validDateWindows.some((window) => new Date(window.startDate) >= new Date(window.endDate))) {
+      alert("Each date window must have a valid start and end date");
       return;
     }
     
     try {
       setActionLoading(editingItem._id);
       const endpoint = itemType === "trek" ? "treks" : "tours";
-      await axios.put(`${API_BASE}/api/${endpoint}/${editingItem._id}`, editForm, { headers });
+      const firstDateWindow = validDateWindows[0];
+
+      const uniqueDateWindows = Array.from(
+        new Map(
+          validDateWindows.map((window) => [
+            `${new Date(window.startDate).toISOString()}|${new Date(window.endDate).toISOString()}`,
+            {
+              label: window.label?.trim() || "",
+              startDate: window.startDate,
+              endDate: window.endDate,
+            },
+          ])
+        ).values()
+      );
+
+      const sanitizedItinerary = editForm.itinerary
+        .map((item, index) => ({
+          day: Number(item.day) > 0 ? Number(item.day) : index + 1,
+          title: item.title.trim(),
+          description: item.description.trim(),
+          meals: item.meals.trim(),
+          accommodation: item.accommodation.trim(),
+        }))
+        .filter((item) => item.title && item.description);
+
+      const sanitizedThingsToCarry = editForm.thingsToCarry
+        .map((item) => ({
+          item: item.item.trim(),
+          details: item.details.trim(),
+          required: Boolean(item.required),
+        }))
+        .filter((item) => item.item);
+
+      const sanitizedPickupLocations = editForm.pickupLocations
+        .map((item) => ({
+          city: item.city.trim(),
+          location: item.location.trim(),
+          pickupTime: item.pickupTime.trim(),
+          notes: item.notes.trim(),
+        }))
+        .filter((item) =>
+          item.city &&
+          item.location &&
+          item.pickupTime &&
+          allowedCities.includes(item.city as (typeof allowedCities)[number])
+        );
+
+      const sanitizedCityPricing = Array.from(
+        new Map(
+          editForm.cityPricing
+            .filter((item) => item.city && allowedCities.includes(item.city as (typeof allowedCities)[number]))
+            .map((item) => [
+              item.city,
+              {
+                city: item.city,
+                price: Number(item.price) || 0,
+                discountPrice: Number(item.discountPrice) || 0,
+              },
+            ])
+        ).values()
+      );
+
+      const payload = {
+        ...editForm,
+        difficulty: normalizedDifficulty,
+        highlights: editForm.highlights.filter(h => h.trim()),
+        cityPricing: sanitizedCityPricing,
+        itinerary: sanitizedItinerary,
+        thingsToCarry: sanitizedThingsToCarry,
+        pickupLocations: sanitizedPickupLocations,
+        startDate: firstDateWindow.startDate,
+        endDate: uniqueDateWindows[uniqueDateWindows.length - 1].endDate,
+        dateWindows: uniqueDateWindows,
+      };
+      
+      await axios.put(`${API_BASE}/api/${endpoint}/${editingItem._id}`, payload, { headers });
       
       // Update the item in the local state
       setItems((prev) =>
         prev.map((item) =>
-          item._id === editingItem._id ? { ...item, ...editForm } : item
+          item._id === editingItem._id
+            ? {
+                ...item,
+                ...payload,
+                itinerary: payload.itinerary?.map((day) => ({
+                  ...day,
+                  day: String(day.day),
+                })),
+              }
+            : item
         )
       );
       
       setEditingItem(null);
-      setEditForm({});
+      setEditForm(null);
       alert(`${itemName} updated successfully!`);
     } catch (err) {
+      const message = axios.isAxiosError(err)
+        ? (() => {
+            const responseData = err.response?.data;
+            if (responseData?.errors && typeof responseData.errors === "object") {
+              const firstValidationError = Object.values(responseData.errors)[0] as { message?: string } | undefined;
+              if (firstValidationError?.message) {
+                return firstValidationError.message;
+              }
+            }
+            return responseData?.message || err.message;
+          })()
+        : "Unknown error";
       console.error("Update error:", err);
-      alert(`Failed to update ${itemName.toLowerCase()}. Please try again.`);
+      alert(`Failed to update ${itemName.toLowerCase()}: ${message}`);
     } finally {
       setActionLoading("");
     }
@@ -183,7 +412,11 @@ const ManageTreks = () => {
 
   const handleEditCancel = () => {
     setEditingItem(null);
-    setEditForm({});
+    setEditForm(null);
+  };
+
+  const updateEditForm = (updater: (prev: EditForm) => EditForm) => {
+    setEditForm((prev) => (prev ? updater(prev) : prev));
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -593,7 +826,7 @@ const ManageTreks = () => {
       </div>
 
       {/* Edit Modal */}
-      {editingItem && (
+      {editingItem && editForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
@@ -617,7 +850,7 @@ const ManageTreks = () => {
                 <input
                   type="text"
                   value={editForm.name || ""}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => updateEditForm((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter trek name"
                 />
@@ -629,10 +862,29 @@ const ManageTreks = () => {
                 <input
                   type="text"
                   value={editForm.location || ""}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
+                  onChange={(e) => updateEditForm((prev) => ({ ...prev, location: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter location"
                 />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <div className="overflow-hidden rounded-lg border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200">
+                  <ReactQuill
+                    theme="snow"
+                    value={editForm.description}
+                    onChange={(value) => setEditForm(prev => prev ? ({ ...prev, description: value }) : prev)}
+                    modules={quillModules}
+                    formats={quillFormats}
+                    placeholder="Describe the trek or tour experience..."
+                    className="bg-white"
+                  />
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Format the description with bold, italic, lists, and alignment.
+                </p>
               </div>
 
               {/* Duration and Difficulty */}
@@ -642,7 +894,7 @@ const ManageTreks = () => {
                   <input
                     type="text"
                     value={editForm.duration || ""}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, duration: e.target.value }))}
+                    onChange={(e) => updateEditForm((prev) => ({ ...prev, duration: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="e.g., 5 days"
                   />
@@ -652,7 +904,7 @@ const ManageTreks = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Difficulty</label>
                   <select
                     value={editForm.difficulty || ""}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, difficulty: e.target.value }))}
+                    onChange={(e) => updateEditForm((prev) => ({ ...prev, difficulty: e.target.value }))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="">Select difficulty</option>
@@ -663,26 +915,371 @@ const ManageTreks = () => {
                 </div>
               </div>
 
-              {/* Start and End Dates */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={editForm.startDate || ""}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              {/* Special Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">✨ Special Type</label>
+                <select
+                  value={editForm.specialType || ""}
+                  onChange={(e) => updateEditForm((prev) => ({ ...prev, specialType: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select special type</option>
+                  {specialTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Highlights */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">⭐ Highlights</label>
+                <div className="space-y-3">
+                  {editForm.highlights.map((highlight, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-xl text-blue-600 flex-shrink-0">•</span>
+                      <input
+                        type="text"
+                        placeholder={`Highlight ${index + 1}`}
+                        value={highlight}
+                        onChange={(e) => {
+                          const updated = [...editForm.highlights];
+                          updated[index] = e.target.value;
+                          setEditForm(prev => prev ? { ...prev, highlights: updated } : prev);
+                        }}
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = editForm.highlights.filter((_, i) => i !== index);
+                          setEditForm(prev => prev ? { ...prev, highlights: updated } : prev);
+                        }}
+                        className="px-4 py-3 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors duration-200 font-medium text-sm flex-shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditForm(prev => prev ? { ...prev, highlights: [...prev.highlights, ""] } : prev);
+                    }}
+                    className="w-full px-4 py-3 border-2 border-dashed border-blue-400 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors duration-200 font-medium flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Highlight
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={editForm.endDate || ""}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+              </div>
+
+              {/* Date Windows */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">📅 Date Windows</label>
+                <div className="space-y-3">
+                  {editForm.dateWindows.map((window, index) => (
+                    <div key={`edit-date-window-${index}`} className="p-4 border border-blue-200 rounded-lg space-y-3 bg-blue-50">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800 flex items-center gap-2">
+                          <span className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-bold text-blue-600">{index + 1}</span>
+                          Batch {index + 1}
+                        </span>
+                        {editForm.dateWindows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setEditForm(prev => prev ? ({
+                              ...prev,
+                              dateWindows: prev.dateWindows.filter((_, itemIndex) => itemIndex !== index),
+                            }) : prev)}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            🗑️ Remove
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input
+                          type="text"
+                          value={window.label}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            dateWindows: prev.dateWindows.map((item, itemIndex) => itemIndex === index ? { ...item, label: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="e.g. Batch 1, Batch 2"
+                        />
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">📍</div>
+                          <input
+                            type="date"
+                            value={window.startDate}
+                            onChange={(e) => setEditForm(prev => prev ? ({
+                              ...prev,
+                              dateWindows: prev.dateWindows.map((item, itemIndex) => itemIndex === index ? { ...item, startDate: e.target.value } : item),
+                            }) : prev)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">📍</div>
+                          <input
+                            type="date"
+                            value={window.endDate}
+                            onChange={(e) => setEditForm(prev => prev ? ({
+                              ...prev,
+                              dateWindows: prev.dateWindows.map((item, itemIndex) => itemIndex === index ? { ...item, endDate: e.target.value } : item),
+                            }) : prev)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => prev ? ({
+                      ...prev,
+                      dateWindows: [...prev.dateWindows, { label: `Batch ${prev.dateWindows.length + 1}`, startDate: "", endDate: "" }],
+                    }) : prev)}
+                    className="w-full px-4 py-2 border-2 border-dashed border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition-colors duration-200 font-medium"
+                  >
+                    + Add Date Window
+                  </button>
+                </div>
+              </div>
+
+              {/* Day Wise Itinerary */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Day Wise Itinerary</label>
+                <div className="space-y-3">
+                  {editForm.itinerary.map((day, index) => (
+                    <div key={`edit-itinerary-${index}`} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800">Day {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.filter((_, itemIndex) => itemIndex !== index),
+                          }) : prev)}
+                          className="text-sm text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="number"
+                          min="1"
+                          value={day.day}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, day: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Day"
+                        />
+                        <input
+                          type="text"
+                          value={day.title}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, title: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Title"
+                        />
+                        <textarea
+                          value={day.description}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, description: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full md:col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-24"
+                          placeholder="Description"
+                        />
+                        <input
+                          type="text"
+                          value={day.meals}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, meals: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Meals"
+                        />
+                        <input
+                          type="text"
+                          value={day.accommodation}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, accommodation: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Accommodation"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => prev ? ({
+                      ...prev,
+                      itinerary: [...prev.itinerary, { day: String(prev.itinerary.length + 1), title: "", description: "", meals: "", accommodation: "" }],
+                    }) : prev)}
+                    className="w-full px-4 py-2 border-2 border-dashed border-indigo-300 text-indigo-700 rounded-lg hover:bg-indigo-50 transition-colors duration-200"
+                  >
+                    + Add Day
+                  </button>
+                </div>
+              </div>
+
+              {/* Things to Carry */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Things to Carry</label>
+                <div className="space-y-3">
+                  {editForm.thingsToCarry.map((carry, index) => (
+                    <div key={`edit-carry-${index}`} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800">Item {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => prev ? ({
+                            ...prev,
+                            thingsToCarry: prev.thingsToCarry.filter((_, itemIndex) => itemIndex !== index),
+                          }) : prev)}
+                          className="text-sm text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={carry.item}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            thingsToCarry: prev.thingsToCarry.map((item, itemIndex) => itemIndex === index ? { ...item, item: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Item"
+                        />
+                        <label className="flex items-center gap-3 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={carry.required}
+                            onChange={(e) => setEditForm(prev => prev ? ({
+                              ...prev,
+                              thingsToCarry: prev.thingsToCarry.map((item, itemIndex) => itemIndex === index ? { ...item, required: e.target.checked } : item),
+                            }) : prev)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">Required item</span>
+                        </label>
+                        <textarea
+                          value={carry.details}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            thingsToCarry: prev.thingsToCarry.map((item, itemIndex) => itemIndex === index ? { ...item, details: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full md:col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-24"
+                          placeholder="Details"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => prev ? ({
+                      ...prev,
+                      thingsToCarry: [...prev.thingsToCarry, { item: "", details: "", required: true }],
+                    }) : prev)}
+                    className="w-full px-4 py-2 border-2 border-dashed border-emerald-300 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors duration-200"
+                  >
+                    + Add Carry Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Pickup Locations */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pickup Locations</label>
+                <div className="space-y-3">
+                  {editForm.pickupLocations.map((pickup, index) => (
+                    <div key={`edit-pickup-${index}`} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800">Pickup {index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditForm(prev => prev ? ({
+                            ...prev,
+                            pickupLocations: prev.pickupLocations.filter((_, itemIndex) => itemIndex !== index),
+                          }) : prev)}
+                          className="text-sm text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={pickup.city}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            pickupLocations: prev.pickupLocations.map((item, itemIndex) => itemIndex === index ? { ...item, city: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="City"
+                        />
+                        <input
+                          type="text"
+                          value={pickup.location}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            pickupLocations: prev.pickupLocations.map((item, itemIndex) => itemIndex === index ? { ...item, location: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Pickup location"
+                        />
+                        <input
+                          type="text"
+                          value={pickup.pickupTime}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            pickupLocations: prev.pickupLocations.map((item, itemIndex) => itemIndex === index ? { ...item, pickupTime: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Pickup time"
+                        />
+                        <input
+                          type="text"
+                          value={pickup.notes}
+                          onChange={(e) => setEditForm(prev => prev ? ({
+                            ...prev,
+                            pickupLocations: prev.pickupLocations.map((item, itemIndex) => itemIndex === index ? { ...item, notes: e.target.value } : item),
+                          }) : prev)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Notes"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => prev ? ({
+                      ...prev,
+                      pickupLocations: [...prev.pickupLocations, { city: "", location: "", pickupTime: "", notes: "" }],
+                    }) : prev)}
+                    className="w-full px-4 py-2 border-2 border-dashed border-orange-300 text-orange-700 rounded-lg hover:bg-orange-50 transition-colors duration-200"
+                  >
+                    + Add Pickup Location
+                  </button>
                 </div>
               </div>
 
@@ -692,7 +1289,7 @@ const ManageTreks = () => {
                 <input
                   type="url"
                   value={editForm.thumbnail || ""}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, thumbnail: e.target.value }))}
+                  onChange={(e) => updateEditForm((prev) => ({ ...prev, thumbnail: e.target.value }))}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter image URL"
                 />
@@ -716,7 +1313,7 @@ const ManageTreks = () => {
                   <input
                     type="checkbox"
                     checked={editForm.isActive || false}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                    onChange={(e) => updateEditForm((prev) => ({ ...prev, isActive: e.target.checked }))}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Active Trek</span>
@@ -737,7 +1334,7 @@ const ManageTreks = () => {
                             onChange={(e) => {
                               const newCityPricing = [...(editForm.cityPricing || [])];
                               newCityPricing[index] = { ...newCityPricing[index], city: e.target.value };
-                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                              updateEditForm((prev) => ({ ...prev, cityPricing: newCityPricing }));
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="City name"
@@ -750,7 +1347,7 @@ const ManageTreks = () => {
                             onChange={(e) => {
                               const newCityPricing = [...(editForm.cityPricing || [])];
                               newCityPricing[index] = { ...newCityPricing[index], price: parseInt(e.target.value) || 0 };
-                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                              updateEditForm((prev) => ({ ...prev, cityPricing: newCityPricing }));
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Price"
@@ -764,7 +1361,7 @@ const ManageTreks = () => {
                             onChange={(e) => {
                               const newCityPricing = [...(editForm.cityPricing || [])];
                               newCityPricing[index] = { ...newCityPricing[index], discountPrice: e.target.value ? parseInt(e.target.value) : undefined };
-                              setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                              updateEditForm((prev) => ({ ...prev, cityPricing: newCityPricing }));
                             }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Discount price"
@@ -775,7 +1372,7 @@ const ManageTreks = () => {
                           type="button"
                           onClick={() => {
                             const newCityPricing = editForm.cityPricing?.filter((_, i) => i !== index) || [];
-                            setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                            updateEditForm((prev) => ({ ...prev, cityPricing: newCityPricing }));
                           }}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
                         >
@@ -793,7 +1390,7 @@ const ManageTreks = () => {
                     type="button"
                     onClick={() => {
                       const newCityPricing = [...(editForm.cityPricing || []), { city: "", price: 0, discountPrice: undefined }];
-                      setEditForm(prev => ({ ...prev, cityPricing: newCityPricing }));
+                      updateEditForm((prev) => ({ ...prev, cityPricing: newCityPricing }));
                     }}
                     className="w-full px-4 py-2 border-2 border-dashed border-gray-300 text-gray-600 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-colors duration-200 flex items-center justify-center gap-2"
                   >

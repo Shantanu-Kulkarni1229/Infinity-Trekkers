@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import DOMPurify from "dompurify";
@@ -61,7 +61,7 @@ const UpComingTours: React.FC = () => {
   const handleBookNow = (tour: Tour) => {
     toast.info(`Redirecting to booking for ${tour.name}`, {
       position: "top-right",
-      autoClose: 2000,
+      autoClose: 1000,
       hideProgressBar: false,
       closeOnClick: true,
       pauseOnHover: true,
@@ -70,7 +70,7 @@ const UpComingTours: React.FC = () => {
     });
     setTimeout(() => {
       window.location.href = `/book-tour/${tour._id}`;
-    }, 2000);
+    }, 1000);
   };
 
   const renderPrice = (price: number, discountPrice?: number) => {
@@ -119,6 +119,17 @@ const UpComingTours: React.FC = () => {
 
   const filteredTours = getFilteredTours();
   const uniqueCities = getUniqueCities();
+
+  const toursGroupedByType = useMemo(() => {
+    return filteredTours.reduce<Record<string, Tour[]>>((groups, tour) => {
+      const typeKey = tour.tourType?.trim() || "Other Tours";
+      if (!groups[typeKey]) {
+        groups[typeKey] = [];
+      }
+      groups[typeKey].push(tour);
+      return groups;
+    }, {});
+  }, [filteredTours]);
 
   const getDifficultyColor = (difficulty: string) => {
     const lower = difficulty.toLowerCase();
@@ -256,8 +267,24 @@ const UpComingTours: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredTours.map((tour) => {
+          <div className="space-y-12">
+            {Object.entries(toursGroupedByType).map(([typeName, typeTours]) => (
+              <section key={typeName} className="space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-2xl md:text-3xl font-bold text-gray-900">{typeName}</h3>
+                    <p className="text-sm md:text-base text-gray-600 mt-1">
+                      {typeTours.length} tour{typeTours.length !== 1 ? "s" : ""} available in this category
+                    </p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-gray-200 shadow-sm text-sm font-semibold text-sky-700">
+                    <Star className="w-4 h-4" />
+                    Tour Type
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {typeTours.map((tour) => {
               const prices = tour.cityPricing?.map(cp => Number(cp.discountPrice || cp.price)) || [];
               const minPrice = prices.length > 0 ? Math.min(...prices) : "N/A";
               
@@ -394,32 +421,19 @@ const UpComingTours: React.FC = () => {
                           <Star className="w-4 h-4 mr-2 text-sky-600 flex-shrink-0 fill-current" />
                           <span className="text-sm font-bold text-sky-800">Tour Highlights</span>
                         </div>
-                        <div className="text-sm text-sky-800 space-y-2">
+                        <div className="grid grid-cols-2 gap-3">
                           {(() => {
                             const highlightsArray = Array.isArray(tour.highlights) 
-                              ? tour.highlights 
-                              : tour.highlights.split(',');
-                            return highlightsArray.slice(0, 3).map((highlight: string, idx: number) => (
-                              <div key={idx} className="flex items-start">
-                                <span className="text-sky-500 mr-3 mt-0.5 flex-shrink-0">•</span>
-                                <span 
-                                  className="line-clamp-2 leading-relaxed font-medium"
-                                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(highlight.trim()) }} 
-                                />
-                              </div>
-                            ));
-                          })()}
-                          {(() => {
-                            const highlightsArray = Array.isArray(tour.highlights) 
-                              ? tour.highlights 
-                              : tour.highlights.split(',');
-                            return highlightsArray.length > 3 && (
-                              <div className="text-center pt-2">
-                                <span className="text-sm text-sky-600 font-semibold">
-                                  +{highlightsArray.length - 3} more highlights
+                              ? tour.highlights.filter((h: string) => h && h.trim())
+                              : tour.highlights.split(',').map((h: string) => h.trim()).filter((h: string) => h);
+                            return highlightsArray.map((highlight: string, idx: number) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <span className="text-sky-600 font-bold flex-shrink-0 mt-0.5">•</span>
+                                <span className="text-xs text-sky-800 font-medium leading-tight">
+                                  {highlight}
                                 </span>
                               </div>
-                            );
+                            ));
                           })()}
                         </div>
                       </div>
@@ -453,7 +467,10 @@ const UpComingTours: React.FC = () => {
                   </div>
                 </div>
               );
-            })}
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
 

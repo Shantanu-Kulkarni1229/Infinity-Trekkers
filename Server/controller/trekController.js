@@ -1,4 +1,11 @@
 import Trek from "../models/Trek.js";
+import {
+  normalizeItinerary,
+  normalizeDateWindows,
+  normalizeThingsToCarry,
+  normalizePickupLocations,
+  parseJsonArrayField,
+} from "../utils/bookingHelpers.js";
 
 // Helper function for error handling
 const handleError = (res, error, defaultMessage = "Server Error") => {
@@ -36,10 +43,15 @@ export const addTrek = async (req, res) => {
       location, 
       duration, 
       difficulty, 
+      specialType,
       startDate, 
       endDate, 
       highlights,
-      cityPricing
+      cityPricing,
+      itinerary,
+      thingsToCarry,
+      pickupLocations,
+      dateWindows
     } = req.body;
 
     if (!name || !description || !location || !duration || !difficulty) {
@@ -52,9 +64,7 @@ export const addTrek = async (req, res) => {
     // ✅ Parse and validate cityPricing (optional but at least one)
     let parsedCityPricing = [];
     if (cityPricing) {
-      parsedCityPricing = typeof cityPricing === "string" 
-        ? JSON.parse(cityPricing) 
-        : cityPricing;
+      parsedCityPricing = parseJsonArrayField(cityPricing, []);
 
       const validCities = ["Chh. Sambhajinagar", "Pune", "Mumbai"];
 
@@ -94,10 +104,19 @@ export const addTrek = async (req, res) => {
       });
     }
 
-    if (new Date(startDate) >= new Date(endDate)) {
+    const normalizedDateWindows = normalizeDateWindows(dateWindows, startDate, endDate);
+
+    if (normalizedDateWindows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "End date must be after start date"
+        message: "Please provide at least one valid date window",
+      });
+    }
+
+    if (normalizedDateWindows.some((window) => window.startDate >= window.endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "Each start date must be before its end date"
       });
     }
 
@@ -116,11 +135,14 @@ export const addTrek = async (req, res) => {
       location,
       duration,
       difficulty,
+      specialType,
       startDate,
       endDate,
-      highlights: highlights 
-        ? highlights.split(",").map(h => h.trim()) 
-        : [],
+      dateWindows: normalizedDateWindows,
+      highlights: parseJsonArrayField(highlights, []),
+      itinerary: normalizeItinerary(itinerary),
+      thingsToCarry: normalizeThingsToCarry(thingsToCarry),
+      pickupLocations: normalizePickupLocations(pickupLocations),
       cityPricing: sanitizedCityPricing
     });
 
@@ -208,10 +230,15 @@ export const updateTrek = async (req, res) => {
       location, 
       duration, 
       difficulty, 
+      specialType,
       startDate, 
       endDate, 
       highlights,
-      cityPricing
+      cityPricing,
+      itinerary,
+      thingsToCarry,
+      pickupLocations,
+      dateWindows
     } = req.body;
 
     const updatedData = { 
@@ -220,13 +247,53 @@ export const updateTrek = async (req, res) => {
       location, 
       duration, 
       difficulty, 
+      specialType,
       startDate, 
       endDate, 
-      highlights: highlights ? highlights.split(",").map(h => h.trim()) : [] 
+      highlights: parseJsonArrayField(highlights, [])
     };
 
     if (cityPricing) {
-      updatedData.cityPricing = typeof cityPricing === "string" ? JSON.parse(cityPricing) : cityPricing;
+      updatedData.cityPricing = parseJsonArrayField(cityPricing, []);
+    }
+
+    if (itinerary) {
+      updatedData.itinerary = normalizeItinerary(itinerary);
+    }
+
+    if (thingsToCarry) {
+      updatedData.thingsToCarry = normalizeThingsToCarry(thingsToCarry);
+    }
+
+    if (pickupLocations) {
+      updatedData.pickupLocations = normalizePickupLocations(pickupLocations);
+    }
+
+    if (dateWindows || (startDate && endDate)) {
+      // If the client provided explicit dateWindows use them as-is.
+      // Only fall back to using primary start/end when dateWindows is not provided
+      // to avoid inserting a duplicate "Primary Schedule" window.
+      const normalizedDateWindows = dateWindows
+        ? normalizeDateWindows(dateWindows)
+        : normalizeDateWindows(null, startDate, endDate);
+
+      if (normalizedDateWindows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide at least one valid date window",
+        });
+      }
+
+      if (normalizedDateWindows.some((window) => window.startDate >= window.endDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "Each start date must be before its end date",
+        });
+      }
+
+      updatedData.dateWindows = normalizedDateWindows;
+      updatedData.startDate = normalizedDateWindows[0].startDate;
+      updatedData.endDate = normalizedDateWindows[normalizedDateWindows.length - 1].endDate;
     }
 
     if (req.file) {

@@ -1,15 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Filter, X, Heart, Calendar, MapPin, ArrowLeft, ArrowRight, Download, Share2, Eye, Grid, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion'; // Added missing imports
 import galleryData from '../../Data/Gallery.json';
 import { Link } from 'react-router-dom';
 interface GalleryItem {
-  id: string;
+  id: string | number;
   trek: string;
   location: string;
   date: string;
   image: string;
 }
+
+const TILE_VARIANTS = [
+  'aspect-[4/5]',
+  'aspect-[3/4]',
+  'aspect-[1/1]',
+  'aspect-[5/6]',
+  'aspect-[4/3]',
+];
+
+const getTileVariant = (id: string) => {
+  const seed = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return TILE_VARIANTS[seed % TILE_VARIANTS.length];
+};
 
 const Gallery = () => {
   const [selectedTrek, setSelectedTrek] = useState<string>('All');
@@ -28,6 +41,10 @@ const Gallery = () => {
 
   // Get unique trek names for filter
   const trekOptions = ['All', ...new Set(galleryData.map(item => item.trek))];
+
+  const masonryColumnsClass = viewMode === 'grid'
+    ? 'columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 sm:gap-6 md:gap-8'
+    : 'columns-1 md:columns-2 gap-4 sm:gap-6';
 
   // Filter and search images
   const filteredImages = galleryData
@@ -111,7 +128,7 @@ const Gallery = () => {
   };
 
   // Navigate through images in modal
-  const navigateImage = (direction: 'prev' | 'next') => {
+  const navigateImage = useCallback((direction: 'prev' | 'next') => {
     if (!selectedImage) return;
 
     const currentIndex = filteredImages.findIndex(img => img.id.toString() === selectedImage.id.toString());
@@ -122,7 +139,7 @@ const Gallery = () => {
       const prevIndex = currentIndex === 0 ? filteredImages.length - 1 : currentIndex - 1;
       setSelectedImage({ ...filteredImages[prevIndex], id: filteredImages[prevIndex].id.toString() });
     }
-  };
+  }, [filteredImages, selectedImage]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -135,7 +152,7 @@ const Gallery = () => {
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [selectedImage, filteredImages]);
+  }, [selectedImage, filteredImages, navigateImage]);
 
   // Preload images
   useEffect(() => {
@@ -373,10 +390,7 @@ const Gallery = () => {
         ) : (
           <motion.div
             layout
-            className={`max-w-7xl mx-auto ${viewMode === 'grid'
-              ? 'grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8'
-              : 'space-y-4 sm:space-y-6'
-              }`}
+            className={`max-w-7xl mx-auto ${masonryColumnsClass}`}
           >
             <AnimatePresence mode="popLayout">
               {filteredImages.map((item) => (
@@ -387,12 +401,12 @@ const Gallery = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
-                  className={`group relative bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${viewMode === 'list' ? 'flex flex-col sm:flex-row gap-4 p-4 sm:p-6' : ''
+                  className={`group relative mb-4 sm:mb-6 break-inside-avoid bg-white rounded-2xl sm:rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer border border-white/60 ${viewMode === 'list' ? 'flex flex-col sm:flex-row gap-4 p-4 sm:p-6' : ''
                     }`}
                   onClick={() => setSelectedImage({ ...item, id: item.id.toString() })}
                 >
                   {/* Image Container */}
-                  <div className={`relative overflow-hidden ${viewMode === 'list' ? 'sm:w-48 h-48 sm:h-32 flex-shrink-0' : 'aspect-[4/3]'
+                  <div className={`relative overflow-hidden ${viewMode === 'list' ? 'sm:w-48 h-48 sm:h-32 flex-shrink-0' : getTileVariant(String(item.id))
                     }`}>
                     <img
                       src={item.image}
@@ -410,7 +424,7 @@ const Gallery = () => {
 
 
                     {/* Hover Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end">
                       <div className="p-3 sm:p-4 text-white w-full">
                         <div className="flex items-center gap-2 text-xs sm:text-sm">
                           <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -421,23 +435,28 @@ const Gallery = () => {
                   </div>
 
                   {/* Content */}
-                  <div className={`p-4 sm:p-6 ${viewMode === 'list' ? 'flex-1' : ''}`}>
-                    <div className="flex items-start justify-between mb-2 sm:mb-3">
-                      <h3 className="text-lg sm:text-xl font-bold text-gray-800 group-hover:text-blue-500 transition-colors duration-300 line-clamp-1">
-                        {item.trek}
-                      </h3>
-                    </div>
-
-                    <div className="space-y-1 sm:space-y-2 text-gray-600 text-sm sm:text-base">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
-                        <span className="text-xs sm:text-sm">{item.location}</span>
+                    <div className={`p-4 sm:p-5 ${viewMode === 'list' ? 'flex-1' : ''}`}>
+                      <div className="flex items-start justify-between gap-3 mb-2 sm:mb-3">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-800 group-hover:text-blue-500 transition-colors duration-300 line-clamp-2">
+                          {item.trek}
+                        </h3>
+                        <button
+                          onClick={(e) => toggleFavorite(e, String(item.id))}
+                          className="shrink-0 p-2 rounded-full bg-white/90 shadow-md hover:bg-white transition-colors duration-200"
+                          aria-label={favorites.has(String(item.id)) ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Heart className={`w-4 h-4 ${favorites.has(String(item.id)) ? 'text-red-500 fill-red-500' : 'text-gray-400'}`} />
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
+
+                      <div className="flex items-center gap-2 text-gray-600 text-sm sm:text-base">
+                        <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
+                        <span className="text-xs sm:text-sm truncate">{item.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600 text-sm sm:text-base mt-1.5">
+                        <Calendar className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
                         <span className="text-xs sm:text-sm">{formatDate(item.date)}</span>
                       </div>
-                    </div>
 
                     {viewMode === 'list' && (
                       <div className="mt-3 sm:mt-4 flex gap-2 flex-wrap">
@@ -461,7 +480,7 @@ const Gallery = () => {
                         </button>
                       </div>
                     )}
-                  </div>
+                    </div>
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -495,11 +514,11 @@ const Gallery = () => {
                       </div>
                       <div className="flex gap-2 ml-4">
                         <button
-                          onClick={(e) => toggleFavorite(e, selectedImage.id)}
+                          onClick={(e) => toggleFavorite(e, String(selectedImage.id))}
                           className="p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors duration-200"
-                          aria-label={favorites.has(selectedImage.id) ? "Remove from favorites" : "Add to favorites"}
+                          aria-label={favorites.has(String(selectedImage.id)) ? "Remove from favorites" : "Add to favorites"}
                         >
-                          <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.has(selectedImage.id) ? 'text-red-400 fill-red-400' : 'text-white'}`} />
+                          <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${favorites.has(String(selectedImage.id)) ? 'text-red-400 fill-red-400' : 'text-white'}`} />
                         </button>
                         <button
                           onClick={() => shareImage(selectedImage)}

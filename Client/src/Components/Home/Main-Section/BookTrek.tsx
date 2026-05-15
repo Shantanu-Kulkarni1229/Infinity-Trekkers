@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
+import DOMPurify from "dompurify";
+import { BadgeCheck, CalendarDays, Route, Sparkles, Users, ChevronDown, ChevronUp } from "lucide-react";
 import "react-toastify/dist/ReactToastify.css";
 
 interface Trek {
@@ -12,9 +14,23 @@ interface Trek {
   difficulty: string;
   startDate: string;
   endDate: string;
+  dateWindows?: Array<{
+    label?: string;
+    startDate: string;
+    endDate: string;
+  }>;
   highlights: string;
   thumbnail: string;
   cityPricing: CityPricing[];
+  itinerary?: ItineraryItem[];
+}
+
+interface ItineraryItem {
+  day: number;
+  title: string;
+  description: string;
+  meals?: string;
+  accommodation?: string;
 }
 
 interface CityPricing {
@@ -31,6 +47,22 @@ interface FormData {
   members: number;
 }
 
+interface DateWindow {
+  label?: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface TravelerDetail {
+  name: string;
+  phoneNumber: string;
+}
+
+const getStartOfToday = (): Date => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
 const BookTrek = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const [trek, setTrek] = useState<Trek | null>(null);
@@ -42,6 +74,11 @@ const BookTrek = () => {
   const [error, setError] = useState<string>("");
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState<boolean>(false);
   const [isHighlightsExpanded, setIsHighlightsExpanded] = useState<boolean>(false);
+  const [availableDateWindows, setAvailableDateWindows] = useState<DateWindow[]>([]);
+  const [selectedDateWindowIndex, setSelectedDateWindowIndex] = useState<string>("");
+  const [travelerDetails, setTravelerDetails] = useState<TravelerDetail[]>([
+    { name: "", phoneNumber: "" },
+  ]);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<FormData>({
@@ -61,15 +98,11 @@ const BookTrek = () => {
     return tmp.textContent || tmp.innerText || "";
   };
 
+  const sanitizeHtml = (html: string): string => DOMPurify.sanitize(html);
+
   // Helper function to check if text is long and needs "Read More"
   const shouldShowReadMore = (text: string, limit: number = 150): boolean => {
     return text.length > limit;
-  };
-
-  // Helper function to truncate text
-  const truncateText = (text: string, limit: number = 150): string => {
-    if (text.length <= limit) return text;
-    return text.substring(0, limit) + "...";
   };
 
   // Scroll to top when component loads
@@ -84,8 +117,24 @@ const BookTrek = () => {
         const res = await fetch(`${API_BASE}/api/user/treks/${trekId}`);
         const data = await res.json();
         if (data.success) {
-          setTrek(data.data);
+          const trekData = data.data as Trek;
+          setTrek(trekData);
           setDepartureCities(data.departureCities || []);
+
+          const fallbackWindows = trekData.dateWindows && trekData.dateWindows.length > 0
+            ? trekData.dateWindows
+            : [{ label: "Primary Schedule", startDate: trekData.startDate, endDate: trekData.endDate }];
+
+          const todayStart = getStartOfToday();
+          const futureWindows = fallbackWindows.filter((window) => new Date(window.endDate) >= todayStart);
+          setAvailableDateWindows(futureWindows);
+          setSelectedDateWindowIndex(futureWindows.length > 0 ? "0" : "");
+
+          if (futureWindows.length === 0) {
+            setError("No future booking dates are available for this trek.");
+          } else {
+            setError("");
+          }
           toast.success("Trek details loaded successfully!");
         } else {
           throw new Error(data.message || "Failed to fetch trek");
@@ -115,6 +164,18 @@ const BookTrek = () => {
     setFinalPrice(pricePerMember * formData.members);
   }, [formData.city, formData.members, trek]);
 
+  useEffect(() => {
+    setTravelerDetails((prev) => {
+      const nextCount = Math.max(1, Number(formData.members) || 1);
+      if (prev.length === nextCount) return prev;
+      if (prev.length > nextCount) return prev.slice(0, nextCount);
+      return [
+        ...prev,
+        ...Array.from({ length: nextCount - prev.length }, () => ({ name: "", phoneNumber: "" })),
+      ];
+    });
+  }, [formData.members]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({
       ...prev,
@@ -123,6 +184,18 @@ const BookTrek = () => {
           ? parseInt(e.target.value)
           : e.target.value,
     }));
+  };
+
+  const handleTravelerChange = (
+    index: number,
+    field: keyof TravelerDetail,
+    value: string
+  ) => {
+    setTravelerDetails((prev) =>
+      prev.map((traveler, travelerIndex) =>
+        travelerIndex === index ? { ...traveler, [field]: value } : traveler
+      )
+    );
   };
 
   const loadRazorpayScript = () =>
@@ -137,6 +210,20 @@ const BookTrek = () => {
   const handlePayment = async () => {
     if (!formData.name || !formData.email || !formData.phone || !formData.city || finalPrice === 0) {
       toast.warning("Please fill all required fields before proceeding to payment");
+      return;
+    }
+
+    const selectedDateWindow = selectedDateWindowIndex !== "" ? availableDateWindows[Number(selectedDateWindowIndex)] : undefined;
+    if (availableDateWindows.length > 0 && !selectedDateWindow) {
+      toast.warning("Please select a trek date");
+      return;
+    }
+
+    const incompleteTraveler = travelerDetails.find(
+      (traveler) => !traveler.name.trim() || !/^\d{10}$/.test(traveler.phoneNumber.trim())
+    );
+    if (incompleteTraveler) {
+      toast.warning("Please enter valid name and 10-digit phone for each traveler");
       return;
     }
 
@@ -161,6 +248,8 @@ const BookTrek = () => {
           city: formData.city,
           membersCount: formData.members,
           trekId: trekId,
+          selectedDateWindow,
+          travelerDetails,
         }),
       });
 
@@ -250,14 +339,11 @@ const BookTrek = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="text-center max-w-sm mx-auto">
-          <div className="relative">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-sky-200 border-t-sky-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <div className="absolute inset-0 w-8 h-8 sm:w-12 sm:h-12 border-2 border-transparent border-t-sky-400 rounded-full animate-spin mx-auto mt-2 ml-2"></div>
-          </div>
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Loading Trek Details</h3>
-          <p className="text-sm sm:text-base text-gray-600">Preparing your booking experience...</p>
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-sky-600 mx-auto mb-4"></div>
+          <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 mb-2">Loading trek details</h3>
+          <p className="text-sm sm:text-base text-slate-600">Preparing your booking experience...</p>
         </div>
       </div>
     );
@@ -265,18 +351,16 @@ const BookTrek = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
-        <div className="text-center max-w-md mx-auto p-4 sm:p-8">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 sm:w-10 sm:h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 19c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-slate-50 flex items-center justify-center px-4">
+        <div className="text-center max-w-md mx-auto rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl shadow-sky-100/60 backdrop-blur">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+            <BadgeCheck className="h-8 w-8" />
           </div>
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2">Unable to Load Trek</h3>
-          <p className="text-red-600 mb-6 text-sm sm:text-base">{error}</p>
+          <h3 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900 mb-2">Unable to load trek</h3>
+          <p className="text-rose-600 mb-6 text-sm sm:text-base leading-7">{error}</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="bg-sky-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full hover:bg-sky-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl text-sm sm:text-base"
+            className="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-3 text-sm sm:text-base font-semibold text-white shadow-lg shadow-sky-200 transition hover:bg-sky-700"
           >
             Try Again
           </button>
@@ -288,7 +372,10 @@ const BookTrek = () => {
   if (!trek) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-50">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-sky-50 via-white to-slate-50">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.20),_transparent_58%)]" />
+      <div className="pointer-events-none absolute -left-24 top-44 h-72 w-72 rounded-full bg-sky-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-72 h-80 w-80 rounded-full bg-blue-100/40 blur-3xl" />
       <ToastContainer
         position="top-center"
         autoClose={5000}
@@ -303,23 +390,23 @@ const BookTrek = () => {
       />
       
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 text-white py-8 sm:py-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 bg-opacity-10"></div>
-        <div className="absolute top-0 left-0 w-full h-full">
-          <div className="absolute top-6 left-10 w-8 h-8 sm:w-16 sm:h-16 bg-white bg-opacity-10 rounded-full animate-pulse"></div>
-          <div className="absolute top-20 right-20 w-6 h-6 sm:w-12 sm:h-12 bg-white bg-opacity-5 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
-          <div className="absolute bottom-10 left-1/4 w-4 h-4 sm:w-8 sm:h-8 bg-white bg-opacity-10 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
-        </div>
+      <div className="relative overflow-hidden bg-gradient-to-r from-sky-700 via-sky-800 to-indigo-900 text-white py-10 sm:py-14">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.18),_transparent_62%)]" />
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 bg-gradient-to-r from-white to-sky-100 bg-clip-text text-transparent">
-              Book Your Adventure
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-4 flex justify-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.28em] text-sky-100 backdrop-blur-sm">
+                <Sparkles className="h-4 w-4" />
+                Trek booking
+              </span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-3">
+              Book Your Trek
             </h1>
-            <p 
-              className="text-base sm:text-lg md:text-xl text-sky-100 max-w-2xl mx-auto px-4" 
-              dangerouslySetInnerHTML={{ __html: trek.name }} 
-            />
-            <div className="w-20 h-1 bg-white mx-auto rounded-full mt-4"></div>
+            <p className="mx-auto max-w-2xl text-sm sm:text-base md:text-lg leading-7 text-sky-100/90" dangerouslySetInnerHTML={{ __html: trek.name }} />
+            <div className="mt-6 flex justify-center">
+              <div className="h-1 w-24 rounded-full bg-white/90" />
+            </div>
           </div>
         </div>
       </div>
@@ -330,174 +417,213 @@ const BookTrek = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
             
             {/* Trek Information Card */}
-            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 relative overflow-hidden order-2 lg:order-1">
-              <div className="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-bl from-sky-100 to-transparent rounded-full -translate-y-12 translate-x-12 sm:-translate-y-16 sm:translate-x-16"></div>
-              
-              <div className="relative z-10">
-                <div className="flex items-center mb-4 sm:mb-6">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-sky-100 rounded-full flex items-center justify-center mr-3 sm:mr-4">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.5 2.5L16 4.5 13.5 7 16 9.5 13.5 12 16 14.5 13.5 17 16 19.5 13.5 22 16 22.5 13.5 20 16 17.5 13.5 15 16 12.5 13.5 10 16 7.5 13.5 5 16 2.5" />
-                    </svg>
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Trek Details</h2>
+            <div className="order-2 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:order-1 lg:p-8">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">Trek story</span>
+                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{trek.difficulty}</span>
+              </div>
+
+              <div className="relative z-10 space-y-6">
+                <div className="space-y-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Trek details</p>
+                  <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">{stripHtmlTags(trek.name)}</h2>
                 </div>
 
                 {trek.thumbnail && (
-                  <div className="mb-4 sm:mb-6 rounded-xl sm:rounded-2xl overflow-hidden shadow-lg">
+                  <div className="overflow-hidden rounded-2xl shadow-lg ring-1 ring-slate-200">
                     <img
                       src={trek.thumbnail}
                       alt={trek.name}
-                      className="w-full h-40 sm:h-48 object-cover"
+                      className="h-52 w-full object-cover sm:h-60"
                     />
                   </div>
                 )}
 
-                <div className="space-y-3 sm:space-y-4">
-                  <div className="flex items-center text-gray-600 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-sky-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span className="font-semibold break-words">{stripHtmlTags(trek.name)}</span>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Location</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{stripHtmlTags(trek.location)}</p>
                   </div>
-
-                  <div className="flex items-center text-gray-600 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-sky-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span><strong>Location:</strong> {stripHtmlTags(trek.location)}</span>
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Duration</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{stripHtmlTags(trek.duration)}</p>
                   </div>
-
-                  <div className="flex items-center text-gray-600 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-sky-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span><strong>Duration:</strong> {stripHtmlTags(trek.duration)}</span>
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Start</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(trek.startDate).toLocaleDateString()}</p>
                   </div>
-
-                  <div className="flex items-center text-gray-600 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-sky-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                    <span><strong>Difficulty:</strong> {trek.difficulty}</span>
-                  </div>
-
-                  <div className="flex items-start text-gray-600 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-sky-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <div className="flex flex-col space-y-1">
-                      <span><strong>Start:</strong> {new Date(trek.startDate).toLocaleDateString()}</span>
-                      <span><strong>End:</strong> {new Date(trek.endDate).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 sm:pt-4 border-t border-gray-100">
-                    <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Description:</h4>
-                    <div className="text-gray-600 text-xs sm:text-sm whitespace-pre-line">
-                      {shouldShowReadMore(stripHtmlTags(trek.description)) ? (
-                        <>
-                          {isDescriptionExpanded ? stripHtmlTags(trek.description) : truncateText(stripHtmlTags(trek.description))}
-                          <button
-                            onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                            className="ml-2 text-sky-600 hover:text-sky-700 font-medium underline focus:outline-none"
-                          >
-                            {isDescriptionExpanded ? 'Read Less' : 'Read More'}
-                          </button>
-                        </>
-                      ) : (
-                        stripHtmlTags(trek.description)
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 sm:pt-4 border-t border-gray-100">
-                    <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Highlights:</h4>
-                    <div className="text-gray-600 text-xs sm:text-sm whitespace-pre-line">
-                      {shouldShowReadMore(stripHtmlTags(trek.highlights)) ? (
-                        <>
-                          {isHighlightsExpanded ? stripHtmlTags(trek.highlights) : truncateText(stripHtmlTags(trek.highlights))}
-                          <button
-                            onClick={() => setIsHighlightsExpanded(!isHighlightsExpanded)}
-                            className="ml-2 text-sky-600 hover:text-sky-700 font-medium underline focus:outline-none"
-                          >
-                            {isHighlightsExpanded ? 'Read Less' : 'Read More'}
-                          </button>
-                        </>
-                      ) : (
-                        stripHtmlTags(trek.highlights)
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 sm:pt-4 border-t border-gray-100">
-                    <h4 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Pricing:</h4>
-                    <div className="grid grid-cols-1 gap-2">
-                      {trek.cityPricing.map((cp) => (
-                        <div key={cp.city} className="flex justify-between items-center text-xs sm:text-sm">
-                          <span className="text-gray-600">{cp.city}:</span>
-                          <span className="font-medium">
-                            {cp.discountPrice > 0 ? (
-                              <>
-                                <span className="text-gray-400 line-through mr-2">₹{cp.price}</span>
-                                <span className="text-green-600">₹{cp.discountPrice}</span>
-                              </>
-                            ) : (
-                              <span>₹{cp.price}</span>
-                            )}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">End</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(trek.endDate).toLocaleDateString()}</p>
                   </div>
                 </div>
 
-                {/* Trust Indicators */}
-                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center mb-1 sm:mb-2">
-                        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <span className="text-xs text-gray-600 font-medium">Secure</span>
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Trip overview</p>
+                      <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Description</h3>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-100 rounded-full flex items-center justify-center mb-1 sm:mb-2">
-                        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <span className="text-xs text-gray-600 font-medium">Verified</span>
+                    <Sparkles className="h-5 w-5 text-sky-500" />
+                  </div>
+                  <div className={`prose prose-sky max-w-none text-sm leading-7 text-slate-700 ${!isDescriptionExpanded ? 'line-clamp-4 overflow-hidden' : ''}`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(trek.description) }} />
+                  {shouldShowReadMore(stripHtmlTags(trek.description)) && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-sky-600 transition hover:text-sky-800"
+                    >
+                      {isDescriptionExpanded ? 'Read less' : 'Read more'}
+                      {isDescriptionExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                  )}
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Why this trek stands out</p>
+                      <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Highlights</h3>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-purple-100 rounded-full flex items-center justify-center mb-1 sm:mb-2">
-                        <svg className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
+                    <Route className="h-5 w-5 text-sky-500" />
+                  </div>
+                  {(() => {
+                    const highlightsArray = String(trek.highlights || "")
+                      .split(/[\n,•]/)
+                      .map((highlight) => highlight.trim())
+                      .filter(Boolean);
+
+                    const visibleHighlights = isHighlightsExpanded ? highlightsArray : highlightsArray.slice(0, 6);
+
+                    return highlightsArray.length > 0 ? (
+                      <>
+                        <ul className="grid gap-3 sm:grid-cols-2">
+                          {visibleHighlights.map((highlight, index) => (
+                            <li key={`${highlight}-${index}`} className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-white px-4 py-3 text-slate-700 shadow-sm">
+                              <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700">{index + 1}</span>
+                              <span className="text-sm leading-6 text-justify">{highlight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {highlightsArray.length > 6 && (
+                          <button
+                            onClick={() => setIsHighlightsExpanded(!isHighlightsExpanded)}
+                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-sky-600 transition hover:text-sky-800"
+                          >
+                            {isHighlightsExpanded ? 'Show less' : `Show ${highlightsArray.length - 6} more`}
+                            {isHighlightsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm leading-7 text-slate-700">{stripHtmlTags(trek.highlights)}</p>
+                    );
+                  })()}
+                </div>
+
+                {trek.itinerary && trek.itinerary.length > 0 && (
+                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day-by-day route</p>
+                        <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Itinerary</h3>
                       </div>
-                      <span className="text-xs text-gray-600 font-medium">Expert</span>
+                      <div className="hidden items-center gap-2 rounded-full border border-sky-100 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 sm:flex">
+                        <Route className="h-4 w-4" />
+                        {trek.itinerary.length} day route
+                      </div>
+                    </div>
+                    <div className="relative space-y-4 pl-1 before:absolute before:left-[1.15rem] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-gradient-to-b before:from-sky-300 before:to-sky-100">
+                      {trek.itinerary
+                        .slice()
+                        .sort((a, b) => Number(a.day) - Number(b.day))
+                        .map((dayItem, index) => (
+                          <div key={`${dayItem.day}-${index}`} className="relative flex gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                            <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 text-base font-black text-white shadow-lg shadow-sky-200">
+                              {dayItem.day}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day {dayItem.day}</p>
+                                  <h4 className="mt-1 text-sm font-bold tracking-tight text-slate-900 sm:text-base">{dayItem.title}</h4>
+                                </div>
+                                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm">Stop {index + 1}</span>
+                              </div>
+                              <p className="mt-2 text-sm leading-7 text-slate-600 text-justify">{dayItem.description}</p>
+                              {(dayItem.meals || dayItem.accommodation) && (
+                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                  {dayItem.meals && <div className="rounded-2xl bg-sky-50 px-4 py-3 text-xs text-sky-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Meals</span><span className="mt-1 block leading-6">{dayItem.meals}</span></div>}
+                                  {dayItem.accommodation && <div className="rounded-2xl bg-indigo-50 px-4 py-3 text-xs text-indigo-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-500">Stay</span><span className="mt-1 block leading-6">{dayItem.accommodation}</span></div>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   </div>
+                )}
+
+                <div className="rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-sky-50 p-5 shadow-sm">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-emerald-500">Pricing</p>
+                      <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Starting from</h3>
+                    </div>
+                    <Users className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div className="grid gap-2">
+                    {trek.cityPricing.map((cp) => (
+                      <div key={cp.city} className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-sm shadow-sm">
+                        <span className="font-medium text-slate-700">{cp.city}</span>
+                        <span className="font-semibold text-slate-900">
+                          {cp.discountPrice > 0 ? (
+                            <>
+                              <span className="mr-2 text-slate-400 line-through">₹{cp.price}</span>
+                              <span className="text-emerald-600">₹{cp.discountPrice}</span>
+                            </>
+                          ) : (
+                            <span>₹{cp.price}</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs font-semibold text-slate-700">Secure</p></div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs font-semibold text-slate-700">Verified</p></div>
+                  <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs font-semibold text-slate-700">Expert</p></div>
                 </div>
               </div>
             </div>
 
             {/* Booking Form */}
-            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 lg:p-8 border border-gray-100 relative overflow-hidden order-1 lg:order-2">
-              <div className="absolute top-0 left-0 w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-sky-100 to-transparent rounded-full -translate-y-12 -translate-x-12 sm:-translate-y-16 sm:-translate-x-16"></div>
-              
+            <div className="order-1 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:order-2 lg:p-8">
               <div className="relative z-10">
-                <div className="flex items-center mb-6 sm:mb-8">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-sky-100 rounded-full flex items-center justify-center mr-3 sm:mr-4">
-                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
+                <div className="mb-6 flex items-center sm:mb-8">
+                  <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 sm:mr-4 sm:h-12 sm:w-12">
+                    <CalendarDays className="h-5 w-5 text-sky-600 sm:h-6 sm:w-6" />
                   </div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Booking Form</h2>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Reserve your slot</p>
+                    <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">Booking Form</h2>
+                  </div>
+                </div>
+
+                <div className="mb-6 rounded-2xl border border-sky-100 bg-gradient-to-r from-sky-50 to-indigo-50 p-4 sm:p-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Your total</p>
+                      <div className="mt-1 text-3xl font-black tracking-tight text-sky-700 sm:text-4xl">₹{finalPrice.toLocaleString()}</div>
+                    </div>
+                    <div className="hidden rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm sm:block">GST included</div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold text-sky-700">
+                    <span className="rounded-full bg-white px-3 py-2 shadow-sm">Secure checkout</span>
+                    <span className="rounded-full bg-white px-3 py-2 shadow-sm">Fast confirmation</span>
+                    <span className="rounded-full bg-white px-3 py-2 shadow-sm">Razorpay</span>
+                  </div>
                 </div>
 
                 <form className="space-y-4 sm:space-y-6" onSubmit={(e) => e.preventDefault()}>
@@ -558,6 +684,34 @@ const BookTrek = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Date Window Selection */}
+                  {availableDateWindows.length > 0 && (
+                    <div className="group">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Travel Date</label>
+                      <div className="relative">
+                        <select
+                          value={selectedDateWindowIndex}
+                          onChange={(e) => setSelectedDateWindowIndex(e.target.value)}
+                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 appearance-none bg-white text-sm sm:text-base"
+                          required
+                        >
+                          <option value="">Select travel date</option>
+                          {availableDateWindows.map((window, index) => (
+                            <option key={`${window.startDate}-${window.endDate}-${index}`} value={index}>
+                              {(window.label?.trim() ? window.label : `Batch ${index + 1}`) + " - "}
+                              {new Date(window.startDate).toLocaleDateString()} to {new Date(window.endDate).toLocaleDateString()}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Email Input */}
                   <div className="group">
@@ -623,6 +777,35 @@ const BookTrek = () => {
                     </div>
                   </div>
 
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Traveler Details ({formData.members} member{formData.members > 1 ? "s" : ""})
+                    </label>
+                    <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                      {travelerDetails.map((traveler, index) => (
+                        <div key={`traveler-${index}`} className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-gray-200 p-3 bg-gray-50">
+                          <input
+                            type="text"
+                            value={traveler.name}
+                            onChange={(e) => handleTravelerChange(index, "name", e.target.value)}
+                            placeholder={`Member ${index + 1} name`}
+                            className="w-full border border-gray-300 p-2.5 rounded-lg focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all text-sm"
+                            required
+                          />
+                          <input
+                            type="tel"
+                            value={traveler.phoneNumber}
+                            onChange={(e) => handleTravelerChange(index, "phoneNumber", e.target.value.replace(/\D/g, "").slice(0, 10))}
+                            placeholder={`Member ${index + 1} phone`}
+                            className="w-full border border-gray-300 p-2.5 rounded-lg focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all text-sm"
+                            maxLength={10}
+                            required
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Price Display */}
                   <div className="bg-gradient-to-r from-sky-50 to-sky-100 p-4 sm:p-6 rounded-2xl border border-sky-200">
                     <div className="flex justify-between items-center">
@@ -646,6 +829,7 @@ const BookTrek = () => {
                     type="button"
                     onClick={handlePayment}
                     disabled={!formData.name || !formData.email || !formData.phone || !formData.city || finalPrice === 0 || bookingProcessing || paymentProcessing}
+                      
                     className="w-full bg-gradient-to-r from-sky-600 to-sky-700 text-white p-3 sm:p-4 rounded-xl hover:from-sky-700 hover:to-sky-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center space-x-2 sm:space-x-3 font-semibold text-sm sm:text-lg"
                   >
                     {bookingProcessing ? (
@@ -697,7 +881,7 @@ const BookTrek = () => {
                   </svg>
                 </div>
                 <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">100% Safe & Secure</h4>
-                <p className="text-gray-600 text-xs sm:text-sm">Your bookings and payments are completely secure with industry-standard encryption.</p>
+                <p className="text-gray-600 text-xs sm:text-sm text-justify">Your bookings and payments are completely secure with industry-standard encryption.</p>
               </div>
 
               <div className="text-center group">
@@ -707,7 +891,7 @@ const BookTrek = () => {
                   </svg>
                 </div>
                 <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">Expert Guides</h4>
-                <p className="text-gray-600 text-xs sm:text-sm">Professional and experienced trek leaders ensure your safety and amazing experience.</p>
+                <p className="text-gray-600 text-xs sm:text-sm text-justify">Professional and experienced trek leaders ensure your safety and amazing experience.</p>
               </div>
 
               <div className="text-center group">
@@ -717,7 +901,7 @@ const BookTrek = () => {
                   </svg>
                 </div>
                 <h4 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">24/7 Support</h4>
-                <p className="text-gray-600 text-xs sm:text-sm">Round-the-clock customer support for any queries or assistance you need.</p>
+                <p className="text-gray-600 text-xs sm:text-sm text-justify">Round-the-clock customer support for any queries or assistance you need.</p>
               </div>
             </div>
           </div>

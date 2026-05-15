@@ -1,5 +1,22 @@
 import mongoose from "mongoose";
 
+const travelerSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    phoneNumber: { type: String, required: true, trim: true },
+  },
+  { _id: false }
+);
+
+const selectedDateWindowSchema = new mongoose.Schema(
+  {
+    label: { type: String, default: "", trim: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 const userBookingSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -11,6 +28,17 @@ const userBookingSchema = new mongoose.Schema(
       required: true
     },
     membersCount: { type: Number, required: true, min: 1 },
+    travelerDetails: {
+      type: [travelerSchema],
+      default: [],
+      validate: {
+        validator: function (value) {
+          return value.length === this.membersCount;
+        },
+        message: "Traveler details must match membersCount",
+      },
+    },
+    selectedDateWindow: selectedDateWindowSchema,
     trek: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Trek"

@@ -1,4 +1,11 @@
 import Tour from "../models/Tour.js";
+import {
+  normalizeItinerary,
+  normalizeDateWindows,
+  normalizeThingsToCarry,
+  normalizePickupLocations,
+  parseJsonArrayField,
+} from "../utils/bookingHelpers.js";
 
 // Helper function for error handling
 const handleError = (res, error, defaultMessage = "Server Error") => {
@@ -37,12 +44,17 @@ export const addTour = async (req, res) => {
       duration, 
       tourType,
       difficulty, 
+      specialType,
       startDate, 
       endDate, 
       highlights,
       cityPricing,
       maxGroupSize,
-      isFeatured
+      isFeatured,
+      itinerary,
+      thingsToCarry,
+      pickupLocations,
+      dateWindows
     } = req.body;
 
     if (!name || !description || !location || !duration || !difficulty) {
@@ -55,9 +67,7 @@ export const addTour = async (req, res) => {
     // ✅ Parse and validate cityPricing (optional but at least one)
     let parsedCityPricing = [];
     if (cityPricing) {
-      parsedCityPricing = typeof cityPricing === "string" 
-        ? JSON.parse(cityPricing) 
-        : cityPricing;
+      parsedCityPricing = parseJsonArrayField(cityPricing, []);
 
       const validCities = ["Chh. Sambhajinagar", "Pune", "Mumbai"];
 
@@ -89,10 +99,19 @@ export const addTour = async (req, res) => {
       });
     }
 
-    if (new Date(startDate) >= new Date(endDate)) {
+    const normalizedDateWindows = normalizeDateWindows(dateWindows, startDate, endDate);
+
+    if (normalizedDateWindows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Start date must be before end date"
+        message: "Please provide at least one valid date window",
+      });
+    }
+
+    if (normalizedDateWindows.some((window) => window.startDate >= window.endDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "Each start date must be before its end date"
       });
     }
 
@@ -112,11 +131,14 @@ export const addTour = async (req, res) => {
       duration,
       tourType: tourType || "Adventure",
       difficulty,
+      specialType,
       startDate,
       endDate,
-      highlights: highlights 
-        ? highlights.split(",").map(h => h.trim()) 
-        : [],
+      dateWindows: normalizedDateWindows,
+      highlights: parseJsonArrayField(highlights, []),
+      itinerary: normalizeItinerary(itinerary),
+      thingsToCarry: normalizeThingsToCarry(thingsToCarry),
+      pickupLocations: normalizePickupLocations(pickupLocations),
       cityPricing: sanitizedCityPricing,
       maxGroupSize: maxGroupSize || 20,
       isFeatured: isFeatured === 'true' || isFeatured === true || false
@@ -224,11 +246,16 @@ export const updateTour = async (req, res) => {
       description, 
       location, 
       duration, 
+      specialType,
       difficulty, 
       startDate, 
       endDate, 
       highlights,
-      cityPricing
+      cityPricing,
+      itinerary,
+      thingsToCarry,
+      pickupLocations,
+      dateWindows
     } = req.body;
 
     const updatedData = { 
@@ -236,14 +263,49 @@ export const updateTour = async (req, res) => {
       description, 
       location, 
       duration, 
+      specialType,
       difficulty, 
       startDate, 
       endDate, 
-      highlights: highlights ? highlights.split(",").map(h => h.trim()) : [] 
+      highlights: parseJsonArrayField(highlights, [])
     };
 
     if (cityPricing) {
-      updatedData.cityPricing = typeof cityPricing === "string" ? JSON.parse(cityPricing) : cityPricing;
+      updatedData.cityPricing = parseJsonArrayField(cityPricing, []);
+    }
+
+    if (itinerary) {
+      updatedData.itinerary = normalizeItinerary(itinerary);
+    }
+
+    if (thingsToCarry) {
+      updatedData.thingsToCarry = normalizeThingsToCarry(thingsToCarry);
+    }
+
+    if (pickupLocations) {
+      updatedData.pickupLocations = normalizePickupLocations(pickupLocations);
+    }
+
+    if (dateWindows || (startDate && endDate)) {
+      const normalizedDateWindows = normalizeDateWindows(dateWindows, startDate, endDate);
+
+      if (normalizedDateWindows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide at least one valid date window",
+        });
+      }
+
+      if (normalizedDateWindows.some((window) => window.startDate >= window.endDate)) {
+        return res.status(400).json({
+          success: false,
+          message: "Each start date must be before its end date",
+        });
+      }
+
+      updatedData.dateWindows = normalizedDateWindows;
+      updatedData.startDate = normalizedDateWindows[0].startDate;
+      updatedData.endDate = normalizedDateWindows[normalizedDateWindows.length - 1].endDate;
     }
 
     if (req.file) {

@@ -3,6 +3,7 @@ import UserBooking from "../models/UserBooking.js";
 import Trek from "../models/Trek.js";
 import Tour from "../models/Tour.js";
 import transporter from "../config/nodemailer.js";
+import { isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -30,10 +31,16 @@ const isValidPhoneNumber = (phone) => {
   return /^[0-9]{10}$/.test(phone);
 };
 
+const getStartOfToday = () => {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+};
+
 // Create booking and initiate Razorpay (unified for treks and tours)
 export const createBooking = async (req, res) => {
   try {
-    const { name, email, phoneNumber, city, membersCount, trekId, tourId, bookingType = "trek" } = req.body;
+    const { name, email, phoneNumber, city, membersCount, trekId, tourId, bookingType = "trek", travelerDetails, selectedDateWindow } = req.body;
+    const totalMembers = Number(membersCount);
 
     if (!name || !email || !phoneNumber || !city || !membersCount) {
       return res.status(400).json({
@@ -56,10 +63,20 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    if (membersCount < 1 || membersCount > 20) {
+    if (totalMembers < 1 || totalMembers > 20) {
       return res.status(400).json({
         success: false,
         message: "Members count must be between 1 and 20"
+      });
+    }
+
+    let normalizedTravelerDetails;
+    try {
+      normalizedTravelerDetails = normalizeTravelerDetails(travelerDetails, totalMembers);
+    } catch (travelerError) {
+      return res.status(400).json({
+        success: false,
+        message: travelerError.message
       });
     }
 
@@ -89,6 +106,31 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    const availableDateWindows = item.dateWindows && item.dateWindows.length > 0
+      ? item.dateWindows
+      : [{ label: "Primary Schedule", startDate: item.startDate, endDate: item.endDate }];
+
+    const todayStart = getStartOfToday();
+    const futureDateWindows = availableDateWindows.filter((window) => new Date(window.endDate) >= todayStart);
+    if (futureDateWindows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `No future date windows are available for this ${itemType}`,
+      });
+    }
+
+    const chosenDateWindow = selectedDateWindow
+      ? futureDateWindows.find((window) => isMatchingDateWindow(window, selectedDateWindow))
+      : futureDateWindows[0];
+
+    if (!chosenDateWindow) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected date window is not available",
+        availableDateWindows: futureDateWindows,
+      });
+    }
+
     // ✅ Check pricing availability
     const cityPriceObj = item.cityPricing.find(
       (cp) => cp.city.toLowerCase() === city.toLowerCase()
@@ -105,7 +147,7 @@ export const createBooking = async (req, res) => {
       cityPriceObj.discountPrice > 0
         ? cityPriceObj.discountPrice
         : cityPriceObj.price;
-    const finalPrice = pricePerMember * membersCount;
+    const finalPrice = pricePerMember * totalMembers;
 
     if (finalPrice <= 0) {
       return res.status(400).json({
@@ -122,8 +164,9 @@ export const createBooking = async (req, res) => {
         itemId: item._id.toString(),
         itemType: itemType,
         city,
-        membersCount,
+        membersCount: totalMembers,
         bookingFor: name,
+        selectedDateWindow: JSON.stringify(chosenDateWindow),
       },
     });
 
@@ -132,7 +175,9 @@ export const createBooking = async (req, res) => {
       email,
       phoneNumber,
       city,
-      membersCount,
+      membersCount: totalMembers,
+      travelerDetails: normalizedTravelerDetails,
+      selectedDateWindow: chosenDateWindow,
       finalPrice,
       razorpayOrderId: order.id,
       paymentStatus: "pending",
@@ -256,11 +301,11 @@ export const verifyPayment = async (req, res) => {
                   </tr>
                   <tr style="border-bottom: 1px solid #dee2e6;">
                     <td style="padding: 8px 0; font-weight: bold; color: #495057;">Start Date:</td>
-                    <td style="padding: 8px 0; text-align: right; color: #212529;">${new Date(item.startDate).toDateString()}</td>
+                    <td style="padding: 8px 0; text-align: right; color: #212529;">${new Date(booking.selectedDateWindow?.startDate || item.startDate).toDateString()}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #dee2e6;">
                     <td style="padding: 8px 0; font-weight: bold; color: #495057;">End Date:</td>
-                    <td style="padding: 8px 0; text-align: right; color: #212529;">${new Date(item.endDate).toDateString()}</td>
+                    <td style="padding: 8px 0; text-align: right; color: #212529;">${new Date(booking.selectedDateWindow?.endDate || item.endDate).toDateString()}</td>
                   </tr>
                   <tr style="border-bottom: 1px solid #dee2e6;">
                     <td style="padding: 8px 0; font-weight: bold; color: #495057;">Members:</td>
@@ -303,7 +348,7 @@ export const verifyPayment = async (req, res) => {
           </div>
         </div>
       `,
-      text: `Payment successful for ${item.name}. Booking ID: ${booking._id}. Amount: ₹${booking.finalPrice}. Start Date: ${new Date(item.startDate).toDateString()}.`
+      text: `Payment successful for ${item.name}. Booking ID: ${booking._id}. Amount: ₹${booking.finalPrice}. Start Date: ${new Date(booking.selectedDateWindow?.startDate || item.startDate).toDateString()}.`
     };
 
     // ✅ Send email to admin
@@ -352,7 +397,7 @@ export const verifyPayment = async (req, res) => {
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; font-weight: bold;">Date Range:</td>
-                  <td style="padding: 8px 0; text-align: right;">${new Date(item.startDate).toDateString()} - ${new Date(item.endDate).toDateString()}</td>
+                  <td style="padding: 8px 0; text-align: right;">${new Date(booking.selectedDateWindow?.startDate || item.startDate).toDateString()} - ${new Date(booking.selectedDateWindow?.endDate || item.endDate).toDateString()}</td>
                 </tr>
               </table>
             </div>

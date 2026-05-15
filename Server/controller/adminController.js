@@ -2,6 +2,7 @@ import UserBooking from "../models/UserBooking.js";
 import Trek from "../models/Trek.js";
 import Tour from "../models/Tour.js";
 import transporter from "../config/nodemailer.js";
+import { normalizeTravelerDetails } from "../utils/bookingHelpers.js";
 
 // Helper function for error handling
 const handleError = (res, error, defaultMessage = "Server Error") => {
@@ -56,7 +57,7 @@ export const getUsersByTrek = async (req, res) => {
     // Get bookings with pagination
     const [bookings, totalCount] = await Promise.all([
       UserBooking.find(query)
-        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt")
+        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow")
         .populate("trek", "name startDate endDate")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -96,7 +97,9 @@ export const getUsersByTrek = async (req, res) => {
           members: booking.membersCount,
           amount: booking.finalPrice,
           status: booking.paymentStatus,
-          bookedOn: booking.createdAt
+          bookedOn: booking.createdAt,
+          travelerDetails: booking.travelerDetails || [],
+          selectedDateWindow: booking.selectedDateWindow
         }))
       }
     });
@@ -245,7 +248,8 @@ export const getTreksOverview = async (req, res) => {
 export const createOfflineBooking = async (req, res) => {
   try {
     console.log("Received offline booking request:", req.body);
-    const { name, email, phoneNumber, city, membersCount, trekId, tourId, bookingType = "trek", paymentMode = "cash" } = req.body;
+    const { name, email, phoneNumber, city, membersCount, trekId, tourId, bookingType = "trek", paymentMode = "cash", travelerDetails } = req.body;
+    const totalMembers = Number(membersCount);
 
     // Validation
     if (!name || !email || !phoneNumber || !city || !membersCount) {
@@ -274,10 +278,20 @@ export const createOfflineBooking = async (req, res) => {
       });
     }
 
-    if (membersCount < 1 || membersCount > 20) {
+    if (totalMembers < 1 || totalMembers > 20) {
       return res.status(400).json({
         success: false,
         message: "Members count must be between 1 and 20",
+      });
+    }
+
+    let normalizedTravelerDetails;
+    try {
+      normalizedTravelerDetails = normalizeTravelerDetails(travelerDetails, totalMembers);
+    } catch (travelerError) {
+      return res.status(400).json({
+        success: false,
+        message: travelerError.message,
       });
     }
 
@@ -325,7 +339,7 @@ export const createOfflineBooking = async (req, res) => {
       cityPriceObj.discountPrice > 0
         ? cityPriceObj.discountPrice
         : cityPriceObj.price;
-    const finalPrice = pricePerMember * membersCount;
+    const finalPrice = pricePerMember * totalMembers;
 
     if (finalPrice <= 0) {
       return res.status(400).json({
@@ -340,7 +354,8 @@ export const createOfflineBooking = async (req, res) => {
       email,
       phoneNumber,
       city,
-      membersCount,
+      membersCount: totalMembers,
+      travelerDetails: normalizedTravelerDetails,
       finalPrice,
       paymentStatus: "paid", // Mark as paid since it's cash payment
       razorpayOrderId: `OFFLINE_${Date.now()}`, // Generate unique identifier for offline bookings
@@ -373,6 +388,7 @@ export const createOfflineBooking = async (req, res) => {
 <ul>
   <li>Date: ${new Date(item.startDate).toDateString()} to ${new Date(item.endDate).toDateString()}</li>
   <li>Members: ${booking.membersCount}</li>
+  <li>Passenger Details: ${booking.travelerDetails.map((traveler) => `${traveler.name} (${traveler.phoneNumber})`).join(", ")}</li>
   <li>City: ${booking.city}</li>
   <li>Amount: ₹${booking.finalPrice}</li>
   <li>Type: ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}</li>
@@ -397,6 +413,7 @@ export const createOfflineBooking = async (req, res) => {
   <li>Email: ${booking.email}</li>
   <li>City: ${booking.city}</li>
   <li>Members: ${booking.membersCount}</li>
+  <li>Passenger Details: ${booking.travelerDetails.map((traveler) => `${traveler.name} (${traveler.phoneNumber})`).join(", ")}</li>
   <li>Amount (Cash): ₹${booking.finalPrice}</li>
   <li>Dates: ${new Date(item.startDate).toDateString()} - ${new Date(item.endDate).toDateString()}</li>
 </ul>
@@ -478,7 +495,7 @@ export const getUsersByTour = async (req, res) => {
     // Get bookings with pagination
     const [bookings, totalCount] = await Promise.all([
       UserBooking.find(query)
-        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt")
+        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow")
         .populate("tour", "name startDate endDate")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -518,7 +535,9 @@ export const getUsersByTour = async (req, res) => {
           members: booking.membersCount,
           amount: booking.finalPrice,
           status: booking.paymentStatus,
-          bookedOn: booking.createdAt
+          bookedOn: booking.createdAt,
+          travelerDetails: booking.travelerDetails || [],
+          selectedDateWindow: booking.selectedDateWindow
         }))
       }
     });
@@ -545,7 +564,7 @@ export const getAllBookings = async (req, res) => {
 
     // Get all bookings with population
     let bookingsQuery = UserBooking.find(query)
-      .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt trek tour")
+      .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt trek tour travelerDetails selectedDateWindow")
       .populate("trek", "name startDate endDate")
       .populate("tour", "name startDate endDate")
       .sort({ createdAt: -1 })
@@ -598,7 +617,9 @@ export const getAllBookings = async (req, res) => {
             bookedOn: booking.createdAt,
             itemType: itemType,
             itemName: item?.name || 'Unknown',
-            itemDates: item ? `${new Date(item.startDate).toDateString()} - ${new Date(item.endDate).toDateString()}` : 'N/A'
+            itemDates: item ? `${new Date(item.startDate).toDateString()} - ${new Date(item.endDate).toDateString()}` : 'N/A',
+            travelerDetails: booking.travelerDetails || [],
+            selectedDateWindow: booking.selectedDateWindow
           };
         })
       }
