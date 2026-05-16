@@ -17,6 +17,16 @@ const selectedDateWindowSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const pickupLocationSchema = new mongoose.Schema(
+  {
+    city: { type: String, required: true, trim: true },
+    location: { type: String, required: true, trim: true },
+    pickupTime: { type: String, required: true, trim: true },
+    notes: { type: String, default: "", trim: true },
+  },
+  { _id: false }
+);
+
 const userBookingSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -39,6 +49,7 @@ const userBookingSchema = new mongoose.Schema(
       },
     },
     selectedDateWindow: selectedDateWindowSchema,
+    pickupLocation: { type: pickupLocationSchema, required: true },
     trek: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Trek"

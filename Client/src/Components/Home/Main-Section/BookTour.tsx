@@ -66,11 +66,19 @@ interface Tour {
   thumbnail: string;
   images: string[];
   cityPricing: CityPricing[];
+  pickupLocations?: PickupLocation[];
   maxGroupSize: number;
   rating: number;
   totalBookings: number;
   cancellationPolicy: string;
   bestTimeToVisit: string;
+}
+
+interface PickupLocation {
+  city: string;
+  location: string;
+  pickupTime: string;
+  notes?: string;
 }
 
 interface CityPricing {
@@ -84,6 +92,7 @@ interface BookingFormData {
   email: string;
   phoneNumber: string;
   city: string;
+  pickupLocation: string;
   membersCount: number;
 }
 
@@ -145,6 +154,7 @@ const BookTour = () => {
     email: "",
     phoneNumber: "",
     city: "",
+    pickupLocation: "",
     membersCount: 1
   });
 
@@ -240,6 +250,7 @@ const BookTour = () => {
   const handleInputChange = (field: keyof BookingFormData, value: string | number) => {
     setFormData(prev => ({
       ...prev,
+      ...(field === "city" ? { pickupLocation: "" } : {}),
       [field]: value
     }));
   };
@@ -273,6 +284,10 @@ const BookTour = () => {
       toast.error("Departure city is required");
       return false;
     }
+    if (!formData.pickupLocation) {
+      toast.error("Pickup location is required");
+      return false;
+    }
     if (formData.membersCount < 1 || formData.membersCount > 20) {
       toast.error("Members count must be between 1 and 20");
       return false;
@@ -299,6 +314,23 @@ const BookTour = () => {
       return;
     }
 
+    const availablePickupLocations = (tour.pickupLocations || []).filter(
+      (location) => location.city.toLowerCase() === formData.city.toLowerCase()
+    );
+    const selectedPickupLocation = formData.pickupLocation !== ""
+      ? availablePickupLocations[Number(formData.pickupLocation)]
+      : undefined;
+
+    if (availablePickupLocations.length === 0) {
+      toast.error("No pickup locations are available for the selected city");
+      return;
+    }
+
+    if (!selectedPickupLocation) {
+      toast.error("Please select a pickup location");
+      return;
+    }
+
     const incompleteTraveler = travelerDetails.find(
       (traveler) => !traveler.name.trim() || !/^\d{10}$/.test(traveler.phoneNumber.trim())
     );
@@ -316,6 +348,7 @@ const BookTour = () => {
         email: formData.email,
         phoneNumber: formData.phoneNumber,
         city: formData.city,
+        pickupLocation: selectedPickupLocation,
         membersCount: formData.membersCount,
         travelerDetails,
         selectedDateWindow,
@@ -583,7 +616,7 @@ const BookTour = () => {
                       ).map((highlight: string, index: number) => (
                         <li key={index} className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-white px-4 py-3 text-slate-700 shadow-sm">
                           <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700">{index + 1}</span>
-                          <span className="text-sm leading-6 text-justify">{highlight}</span>
+                          <span className="text-sm leading-6">{highlight}</span>
                         </li>
                       ))}
                     </ul>
@@ -884,7 +917,8 @@ const BookTour = () => {
                     </div>
 
                     {formData.city && (
-                      <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-sky-50 p-4">
+                      <>
+                        <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-sky-50 p-4">
                         <h4 className="mb-2 text-sm font-semibold text-slate-800">Pricing Details</h4>
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center justify-between">
@@ -913,12 +947,44 @@ const BookTour = () => {
                             <span className="text-sky-700">₹{finalPrice.toLocaleString()}</span>
                           </div>
                         </div>
-                      </div>
+                        </div>
+
+                        <div className="group mt-4">
+                          <label className="block text-sm font-semibold text-slate-700 mb-2">Pickup Location</label>
+                          <div className="relative">
+                            <select
+                              value={formData.pickupLocation}
+                              onChange={(e) => handleInputChange('pickupLocation', e.target.value)}
+                              className="w-full appearance-none rounded-xl border-2 border-slate-200 bg-white p-3 text-sm transition-all duration-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200 sm:p-4 sm:text-base"
+                              required
+                              disabled={!formData.city || (tour.pickupLocations || []).filter((location) => location.city.toLowerCase() === formData.city.toLowerCase()).length === 0}
+                            >
+                              <option value="">
+                                {!formData.city
+                                  ? "Select departure city first"
+                                  : (tour.pickupLocations || []).filter((location) => location.city.toLowerCase() === formData.city.toLowerCase()).length > 0
+                                    ? "Select pickup location"
+                                    : "No pickup locations configured for this city"}
+                              </option>
+                              {(tour.pickupLocations || [])
+                                .filter((location) => location.city.toLowerCase() === formData.city.toLowerCase())
+                                .map((location, index) => (
+                                  <option key={`${location.city}-${location.location}-${location.pickupTime}-${index}`} value={index}>
+                                    {location.location} - {location.pickupTime}
+                                  </option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 sm:right-4">
+                              <ChevronDown className="h-4 w-4 text-slate-400 sm:h-5 sm:w-5" />
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
 
                     <button
                       type="submit"
-                      disabled={bookingProcessing}
+                      disabled={bookingProcessing || !formData.pickupLocation}
                       className="w-full rounded-xl bg-gradient-to-r from-sky-600 to-blue-700 px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-sky-200 transition-all duration-300 hover:from-sky-700 hover:to-blue-800 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:shadow-lg sm:text-base"
                     >
                       {bookingProcessing ? (

@@ -22,7 +22,15 @@ interface Trek {
   highlights: string;
   thumbnail: string;
   cityPricing: CityPricing[];
+  pickupLocations?: PickupLocation[];
   itinerary?: ItineraryItem[];
+}
+
+interface PickupLocation {
+  city: string;
+  location: string;
+  pickupTime: string;
+  notes?: string;
 }
 
 interface ItineraryItem {
@@ -44,6 +52,7 @@ interface FormData {
   email: string;
   phone: string;
   city: string;
+  pickupLocation: string;
   members: number;
 }
 
@@ -86,6 +95,7 @@ const BookTrek = () => {
     email: "",
     phone: "",
     city: "",
+    pickupLocation: "",
     members: 1,
   });
 
@@ -176,9 +186,18 @@ const BookTrek = () => {
     });
   }, [formData.members]);
 
+  const availablePickupLocations = (trek?.pickupLocations || []).filter(
+    (location) => location.city.toLowerCase() === formData.city.toLowerCase()
+  );
+
+  const selectedPickupLocation = formData.pickupLocation !== ""
+    ? availablePickupLocations[Number(formData.pickupLocation)]
+    : undefined;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({
       ...prev,
+      ...(e.target.name === "city" ? { pickupLocation: "" } : {}),
       [e.target.name]:
         e.target.name === "members"
           ? parseInt(e.target.value)
@@ -213,9 +232,24 @@ const BookTrek = () => {
       return;
     }
 
+    if (!formData.pickupLocation) {
+      toast.warning("Please select a pickup location");
+      return;
+    }
+
     const selectedDateWindow = selectedDateWindowIndex !== "" ? availableDateWindows[Number(selectedDateWindowIndex)] : undefined;
     if (availableDateWindows.length > 0 && !selectedDateWindow) {
       toast.warning("Please select a trek date");
+      return;
+    }
+
+    if (availablePickupLocations.length === 0) {
+      toast.warning("No pickup locations are available for the selected city");
+      return;
+    }
+
+    if (!selectedPickupLocation) {
+      toast.warning("Please select a pickup location");
       return;
     }
 
@@ -246,6 +280,7 @@ const BookTrek = () => {
           email: formData.email,
           phoneNumber: formData.phone,
           city: formData.city,
+          pickupLocation: selectedPickupLocation,
           membersCount: formData.members,
           trekId: trekId,
           selectedDateWindow,
@@ -500,7 +535,7 @@ const BookTrek = () => {
                           {visibleHighlights.map((highlight, index) => (
                             <li key={`${highlight}-${index}`} className="flex items-start gap-3 rounded-2xl border border-sky-100 bg-white px-4 py-3 text-slate-700 shadow-sm">
                               <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700">{index + 1}</span>
-                              <span className="text-sm leading-6 text-justify">{highlight}</span>
+                              <span className="text-sm leading-6">{highlight}</span>
                             </li>
                           ))}
                         </ul>
@@ -685,6 +720,37 @@ const BookTrek = () => {
                     </div>
                   </div>
 
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Pickup Location</label>
+                    <div className="relative">
+                      <select
+                        value={formData.pickupLocation}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, pickupLocation: e.target.value }))}
+                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 appearance-none bg-white text-sm sm:text-base"
+                        required
+                        disabled={!formData.city || availablePickupLocations.length === 0}
+                      >
+                        <option value="">
+                          {!formData.city
+                            ? "Select departure city first"
+                            : availablePickupLocations.length > 0
+                              ? "Select pickup location"
+                              : "No pickup locations configured for this city"}
+                        </option>
+                        {availablePickupLocations.map((location, index) => (
+                          <option key={`${location.city}-${location.location}-${location.pickupTime}-${index}`} value={index}>
+                            {location.location} - {location.pickupTime}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Date Window Selection */}
                   {availableDateWindows.length > 0 && (
                     <div className="group">
@@ -828,7 +894,7 @@ const BookTrek = () => {
                   <button
                     type="button"
                     onClick={handlePayment}
-                    disabled={!formData.name || !formData.email || !formData.phone || !formData.city || finalPrice === 0 || bookingProcessing || paymentProcessing}
+                    disabled={!formData.name || !formData.email || !formData.phone || !formData.city || !formData.pickupLocation || finalPrice === 0 || bookingProcessing || paymentProcessing}
                       
                     className="w-full bg-gradient-to-r from-sky-600 to-sky-700 text-white p-3 sm:p-4 rounded-xl hover:from-sky-700 hover:to-sky-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center space-x-2 sm:space-x-3 font-semibold text-sm sm:text-lg"
                   >

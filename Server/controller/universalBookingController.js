@@ -39,10 +39,10 @@ const getStartOfToday = () => {
 // Create booking and initiate Razorpay (unified for treks and tours)
 export const createBooking = async (req, res) => {
   try {
-    const { name, email, phoneNumber, city, membersCount, trekId, tourId, bookingType = "trek", travelerDetails, selectedDateWindow } = req.body;
+    const { name, email, phoneNumber, city, pickupLocation, membersCount, trekId, tourId, bookingType = "trek", travelerDetails, selectedDateWindow } = req.body;
     const totalMembers = Number(membersCount);
 
-    if (!name || !email || !phoneNumber || !city || !membersCount) {
+    if (!name || !email || !phoneNumber || !city || !pickupLocation || !membersCount) {
       return res.status(400).json({
         success: false,
         message: "All fields are required"
@@ -67,6 +67,22 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Members count must be between 1 and 20"
+      });
+    }
+
+    const normalizedPickupLocation = pickupLocation && typeof pickupLocation === "object"
+      ? {
+          city: String(pickupLocation.city ?? "").trim(),
+          location: String(pickupLocation.location ?? "").trim(),
+          pickupTime: String(pickupLocation.pickupTime ?? "").trim(),
+          notes: String(pickupLocation.notes ?? "").trim(),
+        }
+      : null;
+
+    if (!normalizedPickupLocation?.city || !normalizedPickupLocation?.location || !normalizedPickupLocation?.pickupTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Pickup location is required",
       });
     }
 
@@ -103,6 +119,21 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `This ${itemType} is currently not available for booking`
+      });
+    }
+
+    const matchingPickupLocation = item.pickupLocations?.find(
+      (location) =>
+        location.city.toLowerCase() === normalizedPickupLocation.city.toLowerCase() &&
+        location.location === normalizedPickupLocation.location &&
+        location.pickupTime === normalizedPickupLocation.pickupTime
+    );
+
+    if (!matchingPickupLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected pickup location is not available",
+        availablePickupLocations: item.pickupLocations || [],
       });
     }
 
@@ -175,6 +206,7 @@ export const createBooking = async (req, res) => {
       email,
       phoneNumber,
       city,
+      pickupLocation: matchingPickupLocation,
       membersCount: totalMembers,
       travelerDetails: normalizedTravelerDetails,
       selectedDateWindow: chosenDateWindow,
@@ -269,6 +301,9 @@ export const verifyPayment = async (req, res) => {
 
     const item = booking.trek || booking.tour;
     const itemType = booking.trek ? "trek" : "tour";
+    const pickupLocationSummary = booking.pickupLocation
+      ? `${booking.pickupLocation.location} (${booking.pickupLocation.pickupTime})${booking.pickupLocation.notes ? ` - ${booking.pickupLocation.notes}` : ""}`
+      : "N/A";
 
     // ✅ Send email to user
     const userMailOptions = {
@@ -315,6 +350,10 @@ export const verifyPayment = async (req, res) => {
                     <td style="padding: 8px 0; font-weight: bold; color: #495057;">City:</td>
                     <td style="padding: 8px 0; text-align: right; color: #212529;">${booking.city}</td>
                   </tr>
+                  <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 8px 0; font-weight: bold; color: #495057;">Pickup Location:</td>
+                    <td style="padding: 8px 0; text-align: right; color: #212529;">${pickupLocationSummary}</td>
+                  </tr>
                   <tr>
                     <td style="padding: 8px 0; font-weight: bold; color: #495057; font-size: 18px;">Total Amount:</td>
                     <td style="padding: 8px 0; text-align: right; color: #28a745; font-weight: bold; font-size: 18px;">₹${booking.finalPrice}</td>
@@ -348,7 +387,7 @@ export const verifyPayment = async (req, res) => {
           </div>
         </div>
       `,
-      text: `Payment successful for ${item.name}. Booking ID: ${booking._id}. Amount: ₹${booking.finalPrice}. Start Date: ${new Date(booking.selectedDateWindow?.startDate || item.startDate).toDateString()}.`
+      text: `Payment successful for ${item.name}. Booking ID: ${booking._id}. Amount: ₹${booking.finalPrice}. Start Date: ${new Date(booking.selectedDateWindow?.startDate || item.startDate).toDateString()}. Pickup Location: ${pickupLocationSummary}.`
     };
 
     // ✅ Send email to admin
@@ -384,6 +423,10 @@ export const verifyPayment = async (req, res) => {
                   <td style="padding: 8px 0; text-align: right;">${booking.city}</td>
                 </tr>
                 <tr style="border-bottom: 1px solid #dee2e6;">
+                  <td style="padding: 8px 0; font-weight: bold;">Pickup Location:</td>
+                  <td style="padding: 8px 0; text-align: right;">${pickupLocationSummary}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #dee2e6;">
                   <td style="padding: 8px 0; font-weight: bold;">Members:</td>
                   <td style="padding: 8px 0; text-align: right;">${booking.membersCount}</td>
                 </tr>
@@ -404,7 +447,7 @@ export const verifyPayment = async (req, res) => {
           </div>
         </div>
       `,
-      text: `New booking payment: ${booking.name} paid ₹${booking.finalPrice} for ${item.name} (${booking.membersCount} members from ${booking.city})`
+      text: `New booking payment: ${booking.name} paid ₹${booking.finalPrice} for ${item.name} (${booking.membersCount} members from ${booking.city}). Pickup Location: ${pickupLocationSummary}`
     };
 
     // Send emails

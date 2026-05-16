@@ -25,6 +25,12 @@ type Booking = {
   amount?: number;
   travelerDetails?: Array<{ name: string; phoneNumber: string }>;
   selectedDateWindow?: { label?: string; startDate: string; endDate: string };
+  pickupLocation?: {
+    city: string;
+    location: string;
+    pickupTime: string;
+    notes?: string;
+  };
 };
 
 type ItemDetails = {
@@ -222,7 +228,9 @@ const Bookings = () => {
     .filter(booking => {
       const matchesSearch = booking.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            booking.phone.includes(searchTerm) ||
-                           booking.city.toLowerCase().includes(searchTerm.toLowerCase());
+                           booking.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           booking.pickupLocation?.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           booking.pickupLocation?.pickupTime?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || booking.status.toLowerCase() === statusFilter.toLowerCase();
       return matchesSearch && matchesStatus;
     })
@@ -606,6 +614,11 @@ const Bookings = () => {
                                   <span>•</span>
                                   <span>{booking.members} members</span>
                                 </div>
+                                {booking.pickupLocation && (
+                                  <p className="mt-2 text-xs font-medium text-blue-700">
+                                    Pickup: {booking.pickupLocation.location} • {booking.pickupLocation.pickupTime}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-3 flex-shrink-0">
@@ -651,6 +664,19 @@ const Bookings = () => {
                                   )}
                                 </div>
                               </div>
+
+                              {booking.pickupLocation && (
+                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                  <p className="text-xs text-blue-600 uppercase tracking-wide mb-1">Pickup Location</p>
+                                  <p className="font-semibold text-gray-900">{booking.pickupLocation.location}</p>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    {booking.pickupLocation.city} • {booking.pickupLocation.pickupTime}
+                                  </p>
+                                  {booking.pickupLocation.notes && (
+                                    <p className="text-xs text-gray-600 mt-2">{booking.pickupLocation.notes}</p>
+                                  )}
+                                </div>
+                              )}
 
                               {/* Member List */}
                               <div>

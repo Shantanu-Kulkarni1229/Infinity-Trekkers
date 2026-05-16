@@ -244,6 +244,10 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
+    const pickupLocationSummary = booking.pickupLocation
+      ? `${booking.pickupLocation.location} (${booking.pickupLocation.pickupTime})${booking.pickupLocation.notes ? ` - ${booking.pickupLocation.notes}` : ""}`
+      : "N/A";
+
     // ✅ Send email to user
  const userMailOptions = {
   from: `"Infinity Trekkers" <${process.env.EMAIL_USER}>`,
@@ -376,6 +380,7 @@ export const verifyPayment = async (req, res) => {
                 <li><strong>Total Members:</strong> ${booking.membersCount}</li>
                 <li><strong>Selected Schedule:</strong> ${booking.selectedDateWindow?.label || "Primary Schedule"}</li>
                 <li><strong>Departure City:</strong> ${booking.city}</li>
+                <li><strong>Pickup Location:</strong> ${pickupLocationSummary}</li>
             </ul>
             
             <div class="section-title">💳 Payment Information</div>
@@ -519,6 +524,10 @@ const adminMailOptions = {
                 <div class="detail-item">
                     <div class="detail-label">City</div>
                     <div class="detail-value">${booking.city}</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-label">Pickup Location</div>
+                  <div class="detail-value">${pickupLocationSummary}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Members</div>

@@ -57,7 +57,7 @@ export const getUsersByTrek = async (req, res) => {
     // Get bookings with pagination
     const [bookings, totalCount] = await Promise.all([
       UserBooking.find(query)
-        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow")
+        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow pickupLocation")
         .populate("trek", "name startDate endDate")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -99,7 +99,8 @@ export const getUsersByTrek = async (req, res) => {
           status: booking.paymentStatus,
           bookedOn: booking.createdAt,
           travelerDetails: booking.travelerDetails || [],
-          selectedDateWindow: booking.selectedDateWindow
+          selectedDateWindow: booking.selectedDateWindow,
+          pickupLocation: booking.pickupLocation
         }))
       }
     });
@@ -349,11 +350,24 @@ export const createOfflineBooking = async (req, res) => {
     }
 
     // Create offline booking with "paid" status
+    const matchingPickupLocation = item.pickupLocations?.find(
+      (location) => location.city.toLowerCase() === city.toLowerCase()
+    );
+
+    if (!matchingPickupLocation) {
+      return res.status(400).json({
+        success: false,
+        message: `No pickup location available for ${city}`,
+        availablePickupLocations: item.pickupLocations || [],
+      });
+    }
+
     const bookingData = {
       name,
       email,
       phoneNumber,
       city,
+      pickupLocation: matchingPickupLocation,
       membersCount: totalMembers,
       travelerDetails: normalizedTravelerDetails,
       finalPrice,
@@ -374,6 +388,9 @@ export const createOfflineBooking = async (req, res) => {
 
     await booking.save();
     console.log("Booking saved successfully:", booking._id);
+    const pickupLocationSummary = booking.pickupLocation
+      ? `${booking.pickupLocation.location} (${booking.pickupLocation.pickupTime})${booking.pickupLocation.notes ? ` - ${booking.pickupLocation.notes}` : ""}`
+      : "N/A";
 
     // Send confirmation emails (simple version)
     const userMailOptions = {
@@ -390,12 +407,13 @@ export const createOfflineBooking = async (req, res) => {
   <li>Members: ${booking.membersCount}</li>
   <li>Passenger Details: ${booking.travelerDetails.map((traveler) => `${traveler.name} (${traveler.phoneNumber})`).join(", ")}</li>
   <li>City: ${booking.city}</li>
+  <li>Pickup Location: ${pickupLocationSummary}</li>
   <li>Amount: ₹${booking.finalPrice}</li>
   <li>Type: ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}</li>
 </ul>
 <p>Thank you for choosing Infinity Trekkers!</p>
 `,
-      text: `Booking confirmed for ${item.name}. Details: ${booking.membersCount} members from ${booking.city} for ₹${booking.finalPrice}`
+      text: `Booking confirmed for ${item.name}. Details: ${booking.membersCount} members from ${booking.city}, pickup location ${pickupLocationSummary}, for ₹${booking.finalPrice}`
     };
 
     // Admin notification email (simple version)
@@ -412,6 +430,7 @@ export const createOfflineBooking = async (req, res) => {
   <li>Phone: ${booking.phoneNumber}</li>
   <li>Email: ${booking.email}</li>
   <li>City: ${booking.city}</li>
+  <li>Pickup Location: ${pickupLocationSummary}</li>
   <li>Members: ${booking.membersCount}</li>
   <li>Passenger Details: ${booking.travelerDetails.map((traveler) => `${traveler.name} (${traveler.phoneNumber})`).join(", ")}</li>
   <li>Amount (Cash): ₹${booking.finalPrice}</li>
@@ -419,7 +438,7 @@ export const createOfflineBooking = async (req, res) => {
 </ul>
 <p>This booking was added via admin panel for cash payment.</p>
 `,
-      text: `New offline booking: ${booking.name} for ${item.name}, ${booking.membersCount} members, ₹${booking.finalPrice} cash payment`
+      text: `New offline booking: ${booking.name} for ${item.name}, ${booking.membersCount} members, pickup location ${pickupLocationSummary}, ₹${booking.finalPrice} cash payment`
     };
 
     // Send emails
@@ -495,7 +514,7 @@ export const getUsersByTour = async (req, res) => {
     // Get bookings with pagination
     const [bookings, totalCount] = await Promise.all([
       UserBooking.find(query)
-        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow")
+        .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt travelerDetails selectedDateWindow pickupLocation")
         .populate("tour", "name startDate endDate")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -537,7 +556,8 @@ export const getUsersByTour = async (req, res) => {
           status: booking.paymentStatus,
           bookedOn: booking.createdAt,
           travelerDetails: booking.travelerDetails || [],
-          selectedDateWindow: booking.selectedDateWindow
+          selectedDateWindow: booking.selectedDateWindow,
+          pickupLocation: booking.pickupLocation
         }))
       }
     });
@@ -564,7 +584,7 @@ export const getAllBookings = async (req, res) => {
 
     // Get all bookings with population
     let bookingsQuery = UserBooking.find(query)
-      .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt trek tour travelerDetails selectedDateWindow")
+      .select("name phoneNumber membersCount city finalPrice paymentStatus createdAt trek tour travelerDetails selectedDateWindow pickupLocation")
       .populate("trek", "name startDate endDate")
       .populate("tour", "name startDate endDate")
       .sort({ createdAt: -1 })
@@ -619,7 +639,8 @@ export const getAllBookings = async (req, res) => {
             itemName: item?.name || 'Unknown',
             itemDates: item ? `${new Date(item.startDate).toDateString()} - ${new Date(item.endDate).toDateString()}` : 'N/A',
             travelerDetails: booking.travelerDetails || [],
-            selectedDateWindow: booking.selectedDateWindow
+            selectedDateWindow: booking.selectedDateWindow,
+            pickupLocation: booking.pickupLocation
           };
         })
       }
