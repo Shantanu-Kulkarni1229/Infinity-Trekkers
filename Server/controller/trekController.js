@@ -4,6 +4,7 @@ import {
   normalizeDateWindows,
   normalizeThingsToCarry,
   normalizePickupLocations,
+  normalizeMemberDiscountRules,
   parseJsonArrayField,
 } from "../utils/bookingHelpers.js";
 
@@ -51,7 +52,8 @@ export const addTrek = async (req, res) => {
       itinerary,
       thingsToCarry,
       pickupLocations,
-      dateWindows
+      dateWindows,
+      memberDiscountRules,
     } = req.body;
 
     if (!name || !description || !location || !duration || !difficulty) {
@@ -95,6 +97,8 @@ export const addTrek = async (req, res) => {
         price: parseFloat(city.price),
         discountPrice: city.discountPrice !== undefined && city.discountPrice !== "" && city.discountPrice !== "0" ? parseFloat(city.discountPrice) : 0,
       }));
+
+    const normalizedMemberDiscountRules = normalizeMemberDiscountRules(memberDiscountRules);
 
     // ✅ Final check: ensure at least one city has pricing after filtering
     if (sanitizedCityPricing.length === 0) {
@@ -143,7 +147,8 @@ export const addTrek = async (req, res) => {
       itinerary: normalizeItinerary(itinerary),
       thingsToCarry: normalizeThingsToCarry(thingsToCarry),
       pickupLocations: normalizePickupLocations(pickupLocations),
-      cityPricing: sanitizedCityPricing
+      cityPricing: sanitizedCityPricing,
+      memberDiscountRules: normalizedMemberDiscountRules,
     });
 
     await newTrek.save();
@@ -238,7 +243,8 @@ export const updateTrek = async (req, res) => {
       itinerary,
       thingsToCarry,
       pickupLocations,
-      dateWindows
+      dateWindows,
+      memberDiscountRules,
     } = req.body;
 
     const updatedData = { 
@@ -255,6 +261,10 @@ export const updateTrek = async (req, res) => {
 
     if (cityPricing) {
       updatedData.cityPricing = parseJsonArrayField(cityPricing, []);
+    }
+
+    if (memberDiscountRules) {
+      updatedData.memberDiscountRules = normalizeMemberDiscountRules(memberDiscountRules);
     }
 
     if (itinerary) {

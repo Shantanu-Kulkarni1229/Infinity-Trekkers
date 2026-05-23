@@ -21,6 +21,16 @@ const parseJsonMaybe = (value, fallback = []) => {
 
 export const parseJsonArrayField = (value, fallback = []) => parseJsonMaybe(value, fallback);
 
+export const normalizeMemberDiscountRules = (value) => {
+  return parseJsonMaybe(value, []).map((item, index) => ({
+    id: String(item.id ?? `${index}`),
+    label: String(item.label ?? `Tier ${index + 1}`).trim(),
+    minMembers: Number(item.minMembers ?? item.members ?? 0),
+    discountType: item.discountType === "percentage" ? "percentage" : "perPerson",
+    discountValue: Number(item.discountValue ?? item.value ?? 0),
+  })).filter((item) => item.minMembers > 0 && item.discountValue > 0);
+};
+
 export const normalizeItinerary = (value) =>
   parseJsonMaybe(value, []).map((item, index) => ({
     day: Number(item.day ?? index + 1),
@@ -97,4 +107,37 @@ export const normalizeTravelerDetails = (value, membersCount) => {
   }
 
   return travelers;
+};
+
+export const resolveMemberDiscountRule = (memberDiscountRules, membersCount) => {
+  const rules = Array.isArray(memberDiscountRules) ? memberDiscountRules : [];
+  const eligibleRules = rules
+    .filter((rule) => Number(rule?.minMembers) > 0 && Number(membersCount) >= Number(rule.minMembers))
+    .sort((left, right) => Number(right.minMembers) - Number(left.minMembers));
+
+  return eligibleRules[0] || null;
+};
+
+export const calculateMemberDiscountedPrice = (basePricePerMember, membersCount, memberDiscountRules) => {
+  const rule = resolveMemberDiscountRule(memberDiscountRules, membersCount);
+
+  if (!rule) {
+    return {
+      rule: null,
+      pricePerMember: basePricePerMember,
+      finalPrice: basePricePerMember * Number(membersCount || 0),
+    };
+  }
+
+  const discountValue = Number(rule.discountValue) || 0;
+  const discountPerMember = rule.discountType === "percentage"
+    ? (basePricePerMember * discountValue) / 100
+    : discountValue;
+
+  const pricePerMember = Math.max(0, basePricePerMember - discountPerMember);
+  return {
+    rule,
+    pricePerMember,
+    finalPrice: pricePerMember * Number(membersCount || 0),
+  };
 };

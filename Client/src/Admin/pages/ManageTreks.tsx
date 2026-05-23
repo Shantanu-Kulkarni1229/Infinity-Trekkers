@@ -9,6 +9,13 @@ type CityPricing = {
   discountPrice?: number;
 };
 
+type MemberDiscountRule = {
+  label: string;
+  minMembers: number;
+  discountType: "percentage" | "perPerson";
+  discountValue: number;
+};
+
 type DateWindow = {
   label: string;
   startDate: string;
@@ -58,6 +65,7 @@ type Item = {
   itinerary?: ItineraryItem[];
   thingsToCarry?: CarryItem[];
   pickupLocations?: PickupLocation[];
+  memberDiscountRules?: MemberDiscountRule[];
   type?: "trek" | "tour"; // Add type field for frontend identification
 };
 
@@ -76,6 +84,7 @@ type EditForm = {
   thingsToCarry: CarryItem[];
   pickupLocations: PickupLocation[];
   dateWindows: DateWindow[];
+  memberDiscountRules: MemberDiscountRule[];
 };
 
 const normalizeDifficulty = (value: string): "Easy" | "Moderate" | "Hard" | "" => {
@@ -136,6 +145,7 @@ const ManageTreks = () => {
     "list",
     "link",
   ], []);
+  const itineraryModules = quillModules;
   const headers = useMemo(() => ({
     "x-admin-key": localStorage.getItem("adminKey") || "",
   }), []);
@@ -227,6 +237,7 @@ const ManageTreks = () => {
       itinerary: item.itinerary || [],
       thingsToCarry: item.thingsToCarry || [],
       pickupLocations: item.pickupLocations || [],
+      memberDiscountRules: item.memberDiscountRules || [],
       dateWindows: allDateWindows.map((window) => ({
         label: window.label || "",
         startDate: new Date(window.startDate).toISOString().split("T")[0],
@@ -356,11 +367,26 @@ const ManageTreks = () => {
         ).values()
       );
 
+      const sanitizedMemberDiscountRules = Array.from(
+        new Map(
+          (editForm.memberDiscountRules || [])
+            .map((item) => ({
+              label: item.label.trim(),
+              minMembers: Number(item.minMembers) || 0,
+              discountType: item.discountType,
+              discountValue: Number(item.discountValue) || 0,
+            }))
+            .filter((item) => item.minMembers > 0 && item.discountValue > 0)
+            .map((item) => [item.minMembers, item])
+        ).values()
+      ).sort((left, right) => left.minMembers - right.minMembers);
+
       const payload = {
         ...editForm,
         difficulty: normalizedDifficulty,
         highlights: editForm.highlights.filter(h => h.trim()),
         cityPricing: sanitizedCityPricing,
+        memberDiscountRules: sanitizedMemberDiscountRules,
         itinerary: sanitizedItinerary,
         thingsToCarry: sanitizedThingsToCarry,
         pickupLocations: sanitizedPickupLocations,
@@ -1092,15 +1118,20 @@ const ManageTreks = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="Title"
                         />
-                        <textarea
-                          value={day.description}
-                          onChange={(e) => setEditForm(prev => prev ? ({
-                            ...prev,
-                            itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, description: e.target.value } : item),
-                          }) : prev)}
-                          className="w-full md:col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-24"
-                          placeholder="Description"
-                        />
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                          <ReactQuill
+                            theme="snow"
+                            value={day.description}
+                            onChange={(value) => setEditForm(prev => prev ? ({
+                              ...prev,
+                              itinerary: prev.itinerary.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item),
+                            }) : prev)}
+                            modules={itineraryModules}
+                            formats={quillFormats}
+                            className="bg-white rounded-lg"
+                          />
+                        </div>
                         <input
                           type="text"
                           value={day.meals}
@@ -1398,6 +1429,92 @@ const ManageTreks = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                     Add City Pricing
+                  </button>
+                </div>
+              </div>
+
+              {/* Member Discount Rules */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Member Discount Rules</label>
+                <div className="space-y-3">
+                  {(editForm.memberDiscountRules && editForm.memberDiscountRules.length > 0 ? editForm.memberDiscountRules : [{ label: "", minMembers: 0, discountType: "percentage", discountValue: 0 }]).map((rule, index) => (
+                    <div key={index} className="p-3 border border-emerald-200 rounded-lg bg-emerald-50 space-y-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <input
+                          type="text"
+                          value={rule.label}
+                          onChange={(e) => {
+                            const nextRules = [...(editForm.memberDiscountRules || [])];
+                            nextRules[index] = { ...nextRules[index], label: e.target.value };
+                            updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Label e.g. 5+ members"
+                        />
+                        <input
+                          type="number"
+                          min="1"
+                          value={rule.minMembers}
+                          onChange={(e) => {
+                            const nextRules = [...(editForm.memberDiscountRules || [])];
+                            nextRules[index] = { ...nextRules[index], minMembers: parseInt(e.target.value) || 0 };
+                            updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Min members"
+                        />
+                        <select
+                          value={rule.discountType}
+                          onChange={(e) => {
+                            const nextRules = [...(editForm.memberDiscountRules || [])];
+                            nextRules[index] = { ...nextRules[index], discountType: e.target.value as MemberDiscountRule["discountType"] };
+                            updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        >
+                          <option value="percentage">Percentage off</option>
+                          <option value="perPerson">₹ off per person</option>
+                        </select>
+                        <input
+                          type="number"
+                          min="1"
+                          value={rule.discountValue}
+                          onChange={(e) => {
+                            const nextRules = [...(editForm.memberDiscountRules || [])];
+                            nextRules[index] = { ...nextRules[index], discountValue: parseInt(e.target.value) || 0 };
+                            updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Discount value"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-emerald-700">Example: {rule.minMembers || 5}+ members gets {rule.discountValue || 10}{rule.discountType === "percentage" ? "%" : "₹"} off</p>
+                        {(editForm.memberDiscountRules || []).length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextRules = (editForm.memberDiscountRules || []).filter((_, i) => i !== index);
+                              updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                            }}
+                            className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextRules = [...(editForm.memberDiscountRules || []), { label: "", minMembers: 0, discountType: "percentage" as const, discountValue: 0 }];
+                      updateEditForm((prev) => ({ ...prev, memberDiscountRules: nextRules }));
+                    }}
+                    className="w-full px-4 py-2 border-2 border-dashed border-emerald-300 text-emerald-700 rounded-lg hover:border-emerald-500 hover:text-emerald-800 transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    Add Member Discount Tier
                   </button>
                 </div>
               </div>

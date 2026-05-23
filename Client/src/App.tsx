@@ -15,7 +15,7 @@ import AddTrek from "./Admin/pages/AddTrek.js";
 import ManageTreks from "./Admin/pages/ManageTreks.js";
 import Bookings from "./Admin/pages/Bookings.js";
 import BookTrek from "./Components/Home/Main-Section/BookTrek.js";
-import BookTour from "./Components/Home/Main-Section/BookTour";
+import BookTour from "./Components/Home/Main-Section/BookTour.js";
 
 import AdminEnquiries from "./Admin/pages/AdminEnquiries.js";
 import AdminFeedbackDashboard from "./Admin/pages/AdminFeedbackDashboard.js";

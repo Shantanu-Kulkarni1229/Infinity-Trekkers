@@ -3,6 +3,7 @@ import Trek from "../models/Trek.js";
 import Tour from "../models/Tour.js";
 import transporter from "../config/nodemailer.js";
 import { normalizeTravelerDetails } from "../utils/bookingHelpers.js";
+import { calculateMemberDiscountedPrice } from "../utils/bookingHelpers.js";
 
 // Helper function for error handling
 const handleError = (res, error, defaultMessage = "Server Error") => {
@@ -336,11 +337,12 @@ export const createOfflineBooking = async (req, res) => {
       });
     }
 
-    const pricePerMember =
-      cityPriceObj.discountPrice > 0
-        ? cityPriceObj.discountPrice
-        : cityPriceObj.price;
-    const finalPrice = pricePerMember * totalMembers;
+    const pricingResult = calculateMemberDiscountedPrice(
+      cityPriceObj.discountPrice > 0 ? cityPriceObj.discountPrice : cityPriceObj.price,
+      totalMembers,
+      item.memberDiscountRules || []
+    );
+    const finalPrice = pricingResult.finalPrice;
 
     if (finalPrice <= 0) {
       return res.status(400).json({

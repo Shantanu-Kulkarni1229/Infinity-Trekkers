@@ -22,8 +22,16 @@ interface Trek {
   highlights: string;
   thumbnail: string;
   cityPricing: CityPricing[];
+  memberDiscountRules?: MemberDiscountRule[];
   pickupLocations?: PickupLocation[];
   itinerary?: ItineraryItem[];
+}
+
+interface MemberDiscountRule {
+  label?: string;
+  minMembers: number;
+  discountType: "percentage" | "perPerson";
+  discountValue: number;
 }
 
 interface PickupLocation {
@@ -72,6 +80,20 @@ const getStartOfToday = (): Date => {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 };
 
+const FieldError = ({ message }: { message?: string }) => {
+  if (!message) return null;
+  return <p className="mt-2 text-sm font-medium text-rose-600">{message}</p>;
+};
+
+const getApplicableMemberDiscountRule = (
+  rules: MemberDiscountRule[] = [],
+  members: number
+) => {
+  return [...rules]
+    .filter((rule) => Number(rule.minMembers) > 0 && members >= Number(rule.minMembers))
+    .sort((left, right) => Number(right.minMembers) - Number(left.minMembers))[0] || null;
+};
+
 const BookTrek = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const [trek, setTrek] = useState<Trek | null>(null);
@@ -88,6 +110,9 @@ const BookTrek = () => {
   const [travelerDetails, setTravelerDetails] = useState<TravelerDetail[]>([
     { name: "", phoneNumber: "" },
   ]);
+  const [openItineraryIndex, setOpenItineraryIndex] = useState<number | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitAttempted, setSubmitAttempted] = useState<boolean>(false);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<FormData>({
@@ -109,6 +134,8 @@ const BookTrek = () => {
   };
 
   const sanitizeHtml = (html: string): string => DOMPurify.sanitize(html);
+
+  const renderRichText = (html?: string) => ({ __html: sanitizeHtml(html || "") });
 
   // Helper function to check if text is long and needs "Read More"
   const shouldShowReadMore = (text: string, limit: number = 150): boolean => {
@@ -194,15 +221,90 @@ const BookTrek = () => {
     ? availablePickupLocations[Number(formData.pickupLocation)]
     : undefined;
 
+  const selectedDateWindow = selectedDateWindowIndex !== ""
+    ? availableDateWindows[Number(selectedDateWindowIndex)]
+    : undefined;
+
+  const selectedCityPricing = trek?.cityPricing.find(
+    (item) => item.city.toLowerCase() === formData.city.toLowerCase()
+  );
+
+  const basePricePerMember = selectedCityPricing
+    ? (selectedCityPricing.discountPrice > 0 ? selectedCityPricing.discountPrice : selectedCityPricing.price)
+    : 0;
+
+  const applicableMemberDiscount = getApplicableMemberDiscountRule(
+    trek?.memberDiscountRules || [],
+    Number(formData.members) || 0
+  );
+
+  const memberDiscountPerPerson = applicableMemberDiscount
+    ? (applicableMemberDiscount.discountType === "percentage"
+      ? (basePricePerMember * applicableMemberDiscount.discountValue) / 100
+      : applicableMemberDiscount.discountValue)
+    : 0;
+
+  const discountedPricePerMember = Math.max(0, basePricePerMember - memberDiscountPerPerson);
+  const discountSavings = Math.max(0, (basePricePerMember - discountedPricePerMember) * (Number(formData.members) || 0));
+  const calculatedFinalPrice = discountedPricePerMember * (Number(formData.members) || 0);
+
+  useEffect(() => {
+    setFinalPrice(calculatedFinalPrice);
+  }, [calculatedFinalPrice]);
+
+  const validateForm = (data = formData, travelers = travelerDetails) => {
+    const nextErrors: Record<string, string> = {};
+
+    if (!data.name.trim()) nextErrors.name = "Name is required.";
+    if (!data.email.trim()) {
+      nextErrors.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+      nextErrors.email = "Enter a valid email address.";
+    }
+    if (!data.phone.trim()) {
+      nextErrors.phone = "Phone number is required.";
+    } else if (!/^\d{10}$/.test(data.phone.trim())) {
+      nextErrors.phone = "Phone number must be exactly 10 digits.";
+    }
+    if (!data.city) nextErrors.city = "Departure city is required.";
+    if (!data.pickupLocation) nextErrors.pickupLocation = data.city ? "Pickup location is required." : "Select a city first.";
+    if (data.members < 1 || data.members > 20) nextErrors.members = "Members count must be between 1 and 20.";
+    if (availableDateWindows.length > 0 && !selectedDateWindow) nextErrors.selectedDateWindow = "Please select a trek date.";
+    if (travelers.some((traveler) => !traveler.name.trim() || !/^\d{10}$/.test(traveler.phoneNumber.trim()))) {
+      nextErrors.travelerDetails = "Enter valid name and 10-digit phone for each traveler.";
+    }
+
+    return nextErrors;
+  };
+
+  const getFieldClassName = (fieldName: keyof FormData) => {
+    const hasError = Boolean(formErrors[fieldName]);
+    return `w-full border-2 p-3 sm:p-4 rounded-xl transition-all duration-300 placeholder-gray-400 text-sm sm:text-base ${
+      hasError
+        ? "border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-200"
+        : "border-gray-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-200"
+    }`;
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...(e.target.name === "city" ? { pickupLocation: "" } : {}),
-      [e.target.name]:
-        e.target.name === "members"
-          ? parseInt(e.target.value)
-          : e.target.value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        ...(name === "city" ? { pickupLocation: "" } : {}),
+        [name]: name === "members" ? parseInt(value) || 1 : value,
+      };
+
+      if (submitAttempted) {
+        setFormErrors(validateForm(next, travelerDetails));
+      }
+
+      return next;
+    });
+
+    if (name === "city") {
+      setFormErrors((current) => ({ ...current, pickupLocation: "" }));
+    }
   };
 
   const handleTravelerChange = (
@@ -210,11 +312,17 @@ const BookTrek = () => {
     field: keyof TravelerDetail,
     value: string
   ) => {
-    setTravelerDetails((prev) =>
-      prev.map((traveler, travelerIndex) =>
+    setTravelerDetails((prev) => {
+      const next = prev.map((traveler, travelerIndex) =>
         travelerIndex === index ? { ...traveler, [field]: value } : traveler
-      )
-    );
+      );
+
+      if (submitAttempted) {
+        setFormErrors(validateForm(formData, next));
+      }
+
+      return next;
+    });
   };
 
   const loadRazorpayScript = () =>
@@ -227,37 +335,22 @@ const BookTrek = () => {
     });
 
   const handlePayment = async () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.city || finalPrice === 0) {
-      toast.warning("Please fill all required fields before proceeding to payment");
+    setSubmitAttempted(true);
+    const nextErrors = validateForm();
+    setFormErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      toast.warning("Please fix the highlighted booking form errors.");
       return;
     }
 
-    if (!formData.pickupLocation) {
+    if (finalPrice === 0) {
+      toast.warning("Please select a valid city");
+      return;
+    }
+
+    if (!availablePickupLocations.length || !selectedPickupLocation) {
       toast.warning("Please select a pickup location");
-      return;
-    }
-
-    const selectedDateWindow = selectedDateWindowIndex !== "" ? availableDateWindows[Number(selectedDateWindowIndex)] : undefined;
-    if (availableDateWindows.length > 0 && !selectedDateWindow) {
-      toast.warning("Please select a trek date");
-      return;
-    }
-
-    if (availablePickupLocations.length === 0) {
-      toast.warning("No pickup locations are available for the selected city");
-      return;
-    }
-
-    if (!selectedPickupLocation) {
-      toast.warning("Please select a pickup location");
-      return;
-    }
-
-    const incompleteTraveler = travelerDetails.find(
-      (traveler) => !traveler.name.trim() || !/^\d{10}$/.test(traveler.phoneNumber.trim())
-    );
-    if (incompleteTraveler) {
-      toast.warning("Please enter valid name and 10-digit phone for each traveler");
       return;
     }
 
@@ -361,6 +454,13 @@ const BookTrek = () => {
           contact: formData.phone,
         },
         theme: { color: "#0284c7" },
+        modal: {
+          ondismiss: () => {
+            setPaymentProcessing(false);
+            setBookingProcessing(false);
+            toast.info("Payment cancelled.");
+          },
+        },
       };
 
       new window.Razorpay(options).open();
@@ -449,10 +549,10 @@ const BookTrek = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 lg:items-start lg:gap-12">
             
             {/* Trek Information Card */}
-            <div className="order-2 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:order-1 lg:p-8">
+            <div className="order-1 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:order-1 lg:p-8">
               <div className="mb-5 flex flex-wrap items-center gap-3">
                 <span className="inline-flex items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-sky-700">Trek story</span>
                 <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{trek.difficulty}</span>
@@ -492,6 +592,38 @@ const BookTrek = () => {
                     <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(trek.endDate).toLocaleDateString()}</p>
                   </div>
                 </div>
+
+                {trek.memberDiscountRules && trek.memberDiscountRules.length > 0 && (
+                  <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-500">Member offers</p>
+                        <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Discount offers</h3>
+                      </div>
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                        Live savings
+                      </span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {trek.memberDiscountRules
+                        .slice()
+                        .sort((left, right) => left.minMembers - right.minMembers)
+                        .map((rule, index) => (
+                          <div key={`${rule.minMembers}-${index}`} className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{rule.label?.trim() || `${rule.minMembers}+ members`}</p>
+                                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-amber-500">From {rule.minMembers} members</p>
+                              </div>
+                              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                                {rule.discountType === "percentage" ? `${rule.discountValue}% off` : `₹${rule.discountValue} off/person`}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3">
@@ -567,33 +699,47 @@ const BookTrek = () => {
                         {trek.itinerary.length} day route
                       </div>
                     </div>
-                    <div className="relative space-y-4 pl-1 before:absolute before:left-[1.15rem] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-gradient-to-b before:from-sky-300 before:to-sky-100">
+                    <div className="relative space-y-4 pl-0 sm:pl-1 before:absolute before:left-3 sm:before:left-[1.15rem] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-gradient-to-b before:from-sky-300 before:to-sky-100">
                       {trek.itinerary
                         .slice()
                         .sort((a, b) => Number(a.day) - Number(b.day))
-                        .map((dayItem, index) => (
-                          <div key={`${dayItem.day}-${index}`} className="relative flex gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                            <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 text-base font-black text-white shadow-lg shadow-sky-200">
-                              {dayItem.day}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day {dayItem.day}</p>
-                                  <h4 className="mt-1 text-sm font-bold tracking-tight text-slate-900 sm:text-base">{dayItem.title}</h4>
+                        .map((dayItem, index) => {
+                          const isOpen = openItineraryIndex === index;
+                          return (
+                            <div key={`${dayItem.day}-${index}`} className="relative rounded-3xl border border-slate-200 bg-slate-50 shadow-sm">
+                              <div className="flex cursor-pointer gap-4 p-4" onClick={() => setOpenItineraryIndex(isOpen ? null : index)} role="button" aria-expanded={isOpen}>
+                                <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 text-base font-black text-white shadow-lg shadow-sky-200">
+                                  {dayItem.day}
                                 </div>
-                                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm">Stop {index + 1}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Day {dayItem.day}</p>
+                                      <h4 className="mt-1 text-sm font-bold tracking-tight text-slate-900 sm:text-base">{dayItem.title}</h4>
+                                    </div>
+                                    <span className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 shadow-sm">Stop {index + 1}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center">
+                                  {isOpen ? <ChevronUp className="h-5 w-5 text-slate-600" /> : <ChevronDown className="h-5 w-5 text-slate-600" />}
+                                </div>
                               </div>
-                              <p className="mt-2 text-sm leading-7 text-slate-600 text-justify">{dayItem.description}</p>
-                              {(dayItem.meals || dayItem.accommodation) && (
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                  {dayItem.meals && <div className="rounded-2xl bg-sky-50 px-4 py-3 text-xs text-sky-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Meals</span><span className="mt-1 block leading-6">{dayItem.meals}</span></div>}
-                                  {dayItem.accommodation && <div className="rounded-2xl bg-indigo-50 px-4 py-3 text-xs text-indigo-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-500">Stay</span><span className="mt-1 block leading-6">{dayItem.accommodation}</span></div>}
-                                </div>
-                              )}
+
+                              <div className={`overflow-hidden transition-[max-height] duration-300 ${isOpen ? 'max-h-[2000px] py-3 px-4' : 'max-h-0'}`}>
+                                <div
+                                  className="prose prose-sky mt-2 max-w-none text-sm leading-7 text-slate-600"
+                                  dangerouslySetInnerHTML={renderRichText(dayItem.description)}
+                                />
+                                {(dayItem.meals || dayItem.accommodation) && (
+                                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                    {dayItem.meals && <div className="rounded-2xl bg-sky-50 px-4 py-3 text-xs text-sky-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Meals</span><span className="mt-1 block leading-6">{dayItem.meals}</span></div>}
+                                    {dayItem.accommodation && <div className="rounded-2xl bg-indigo-50 px-4 py-3 text-xs text-indigo-900"><span className="block text-[11px] font-semibold uppercase tracking-[0.28em] text-indigo-500">Stay</span><span className="mt-1 block leading-6">{dayItem.accommodation}</span></div>}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
@@ -634,7 +780,8 @@ const BookTrek = () => {
             </div>
 
             {/* Booking Form */}
-            <div className="order-1 overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:order-2 lg:p-8">
+            <div className="order-2 lg:self-start">
+              <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-2xl shadow-sky-100/60 backdrop-blur sm:p-6 lg:h-fit lg:p-8">
               <div className="relative z-10">
                 <div className="mb-6 flex items-center sm:mb-8">
                   <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 sm:mr-4 sm:h-12 sm:w-12">
@@ -672,7 +819,7 @@ const BookTrek = () => {
                         value={formData.name}
                         onChange={handleChange}
                         required
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        className={getFieldClassName('name')}
                       />
                       <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-sky-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -680,6 +827,7 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.name} />
                   </div>
 
                   {/* City Selection */}
@@ -691,7 +839,7 @@ const BookTrek = () => {
                         value={formData.city}
                         onChange={handleChange}
                         required
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 appearance-none bg-white text-sm sm:text-base"
+                        className={`w-full appearance-none bg-white ${getFieldClassName('city')}`}
                       >
                         <option value="">Select Departure City</option>
                         {departureCities.length > 0 ? (
@@ -718,6 +866,7 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.city} />
                   </div>
 
                   <div className="group">
@@ -726,7 +875,7 @@ const BookTrek = () => {
                       <select
                         value={formData.pickupLocation}
                         onChange={(e) => setFormData((prev) => ({ ...prev, pickupLocation: e.target.value }))}
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 appearance-none bg-white text-sm sm:text-base"
+                        className={`w-full appearance-none bg-white ${getFieldClassName('pickupLocation')}`}
                         required
                         disabled={!formData.city || availablePickupLocations.length === 0}
                       >
@@ -749,34 +898,38 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.pickupLocation} />
                   </div>
 
                   {/* Date Window Selection */}
                   {availableDateWindows.length > 0 && (
-                    <div className="group">
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">Travel Date</label>
-                      <div className="relative">
-                        <select
-                          value={selectedDateWindowIndex}
-                          onChange={(e) => setSelectedDateWindowIndex(e.target.value)}
-                          className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 appearance-none bg-white text-sm sm:text-base"
-                          required
-                        >
-                          <option value="">Select travel date</option>
-                          {availableDateWindows.map((window, index) => (
-                            <option key={`${window.startDate}-${window.endDate}-${index}`} value={index}>
-                              {(window.label?.trim() ? window.label : `Batch ${index + 1}`) + " - "}
-                              {new Date(window.startDate).toLocaleDateString()} to {new Date(window.endDate).toLocaleDateString()}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
+                    <>
+                      <div className="group">
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Travel Date</label>
+                        <div className="relative">
+                          <select
+                            value={selectedDateWindowIndex}
+                            onChange={(e) => setSelectedDateWindowIndex(e.target.value)}
+                            className={`w-full appearance-none bg-white ${formErrors.selectedDateWindow ? 'border-rose-300 focus:border-rose-500 focus:ring-2 focus:ring-rose-200' : 'border-2 border-gray-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-200'} p-3 sm:p-4 rounded-xl transition-all duration-300 text-sm sm:text-base`}
+                            required
+                          >
+                            <option value="">Select travel date</option>
+                            {availableDateWindows.map((window, index) => (
+                              <option key={`${window.startDate}-${window.endDate}-${index}`} value={index}>
+                                {(window.label?.trim() ? window.label : `Batch ${index + 1}`) + " - "}
+                                {new Date(window.startDate).toLocaleDateString()} to {new Date(window.endDate).toLocaleDateString()}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                            <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                      <FieldError message={formErrors.selectedDateWindow} />
+                    </>
                   )}
 
                   {/* Email Input */}
@@ -790,7 +943,7 @@ const BookTrek = () => {
                         value={formData.email}
                         onChange={handleChange}
                         required
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        className={getFieldClassName('email')}
                       />
                       <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-sky-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -798,6 +951,7 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.email} />
                   </div>
 
                   {/* Phone Input */}
@@ -810,7 +964,7 @@ const BookTrek = () => {
                         value={formData.phone}
                         onChange={handleChange}
                         required
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        className={getFieldClassName('phone')}
                       />
                       <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-sky-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -818,6 +972,7 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.phone} />
                   </div>
 
                   {/* Members Count */}
@@ -833,7 +988,7 @@ const BookTrek = () => {
                         value={formData.members}
                         onChange={handleChange}
                         required
-                        className="w-full border-2 border-gray-200 p-3 sm:p-4 rounded-xl focus:border-sky-500 focus:ring-2 focus:ring-sky-200 transition-all duration-300 placeholder-gray-400 text-sm sm:text-base"
+                        className={getFieldClassName('members')}
                       />
                       <div className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 group-focus-within:text-sky-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -841,6 +996,7 @@ const BookTrek = () => {
                         </svg>
                       </div>
                     </div>
+                    <FieldError message={formErrors.members} />
                   </div>
 
                   <div className="group">
@@ -870,6 +1026,44 @@ const BookTrek = () => {
                         </div>
                       ))}
                     </div>
+                    <FieldError message={formErrors.travelerDetails} />
+                  </div>
+
+                  <div className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Pricing chart</p>
+                        <h3 className="mt-1 text-lg font-bold tracking-tight text-slate-900">Live total breakdown</h3>
+                      </div>
+                      <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+                        Updates with members
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                        <span className="text-slate-600">City base price per member</span>
+                        <span className="font-semibold text-slate-900">₹{basePricePerMember.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm">
+                        <span className="text-emerald-800">Member discount</span>
+                        <span className="font-semibold text-emerald-700">
+                          {applicableMemberDiscount
+                            ? applicableMemberDiscount.discountType === "percentage"
+                              ? `${applicableMemberDiscount.discountValue}% off`
+                              : `₹${applicableMemberDiscount.discountValue} off / person`
+                            : "No discount yet"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-amber-50 px-4 py-3 text-sm">
+                        <span className="text-amber-900">Savings for {formData.members} member{formData.members > 1 ? "s" : ""}</span>
+                        <span className="font-semibold text-amber-700">₹{discountSavings.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-2xl bg-sky-600 px-4 py-3 text-sm text-white shadow-lg shadow-sky-200">
+                        <span className="font-medium">Final amount</span>
+                        <span className="text-lg font-black">₹{finalPrice.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Price Display */}
@@ -895,8 +1089,8 @@ const BookTrek = () => {
                     type="button"
                     onClick={handlePayment}
                     disabled={!formData.name || !formData.email || !formData.phone || !formData.city || !formData.pickupLocation || finalPrice === 0 || bookingProcessing || paymentProcessing}
-                      
-                    className="w-full bg-gradient-to-r from-sky-600 to-sky-700 text-white p-3 sm:p-4 rounded-xl hover:from-sky-700 hover:to-sky-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center space-x-2 sm:space-x-3 font-semibold text-sm sm:text-lg"
+                    className="w-full sticky bottom-0 z-20 bg-gradient-to-r from-sky-600 to-sky-700 text-white p-3 sm:p-4 rounded-xl hover:from-sky-700 hover:to-sky-800 disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105 hover:shadow-xl disabled:hover:scale-100 disabled:hover:shadow-none flex items-center justify-center space-x-2 sm:space-x-3 font-semibold text-sm sm:text-lg"
+                    style={{ marginBottom: '-0.5rem' }}
                   >
                     {bookingProcessing ? (
                       <>
@@ -933,6 +1127,7 @@ const BookTrek = () => {
                   </div>
                 </form>
               </div>
+            </div>
             </div>
           </div>
 

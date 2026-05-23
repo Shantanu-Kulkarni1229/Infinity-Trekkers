@@ -57,6 +57,20 @@ const dateWindowSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const memberDiscountRuleSchema = new mongoose.Schema(
+  {
+    label: { type: String, default: "", trim: true },
+    minMembers: { type: Number, required: true, min: 1 },
+    discountType: {
+      type: String,
+      enum: ["percentage", "perPerson"],
+      default: "percentage",
+    },
+    discountValue: { type: Number, required: true, min: 0 },
+  },
+  { _id: false }
+);
+
 const trekSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
@@ -121,6 +135,17 @@ const trekSchema = new mongoose.Schema(
           message: "Duplicate city pricing is not allowed",
         },
       ],
+    },
+    memberDiscountRules: {
+      type: [memberDiscountRuleSchema],
+      default: [],
+      validate: {
+        validator: function (value) {
+          const thresholds = value.map((item) => item.minMembers);
+          return new Set(thresholds).size === thresholds.length;
+        },
+        message: "Duplicate member discount thresholds are not allowed",
+      },
     },
     isActive: { type: Boolean, default: true },
     isFeatured: { type: Boolean, default: false },

@@ -3,7 +3,7 @@ import UserBooking from "../models/UserBooking.js";
 import Trek from "../models/Trek.js";
 import Tour from "../models/Tour.js";
 import transporter from "../config/nodemailer.js";
-import { isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
+import { calculateMemberDiscountedPrice, isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -174,11 +174,12 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const pricePerMember =
-      cityPriceObj.discountPrice > 0
-        ? cityPriceObj.discountPrice
-        : cityPriceObj.price;
-    const finalPrice = pricePerMember * totalMembers;
+    const pricingResult = calculateMemberDiscountedPrice(
+      cityPriceObj.discountPrice > 0 ? cityPriceObj.discountPrice : cityPriceObj.price,
+      totalMembers,
+      item.memberDiscountRules || []
+    );
+    const finalPrice = pricingResult.finalPrice;
 
     if (finalPrice <= 0) {
       return res.status(400).json({

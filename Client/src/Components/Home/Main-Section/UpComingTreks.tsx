@@ -10,6 +10,13 @@ interface CityPricing {
   discountPrice?: number;
 }
 
+interface MemberDiscountRule {
+  label?: string;
+  minMembers: number;
+  discountType: "percentage" | "perPerson";
+  discountValue: number;
+}
+
 interface Trek {
   _id: string;
   name: string;
@@ -24,6 +31,7 @@ interface Trek {
   thumbnail: string;
   price?: number;
   cityPricing?: CityPricing[];
+  memberDiscountRules?: MemberDiscountRule[];
 }
 
 const UpcomingTreks: React.FC = () => {
@@ -160,6 +168,32 @@ const UpcomingTreks: React.FC = () => {
     if (lower.includes('moderate')) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     if (lower.includes('hard') || lower.includes('difficult')) return 'bg-red-100 text-red-800 border-red-200';
     return 'bg-blue-100 text-blue-800 border-blue-200';
+  };
+
+  const getMemberDiscountSummary = (trek: Trek) => {
+    const rules = (trek.memberDiscountRules || [])
+      .filter((rule) => Number(rule.minMembers) > 0 && Number(rule.discountValue) > 0)
+      .sort((left, right) => left.minMembers - right.minMembers);
+
+    if (rules.length === 0) {
+      return null;
+    }
+
+    const firstRule = rules[0];
+    const summary = firstRule.discountType === "percentage"
+      ? `${firstRule.minMembers}+ → ${firstRule.discountValue}% off`
+      : `${firstRule.minMembers}+ → ₹${firstRule.discountValue} off/person`;
+
+    return {
+      summary,
+      extraCount: Math.max(0, rules.length - 1),
+    };
+  };
+
+  const getMemberDiscountRules = (trek: Trek) => {
+    return (trek.memberDiscountRules || [])
+      .filter((rule) => Number(rule.minMembers) > 0 && Number(rule.discountValue) > 0)
+      .sort((left, right) => left.minMembers - right.minMembers);
   };
 
   if (loading) {
@@ -455,6 +489,35 @@ const UpcomingTreks: React.FC = () => {
                         </div>
                       </div>
                     </div>
+
+                    {getMemberDiscountSummary(trek) && (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Group discount</p>
+                            <p className="mt-1 text-sm font-bold text-amber-900">
+                              {getMemberDiscountSummary(trek)?.summary}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm">
+                            {getMemberDiscountSummary(trek)?.extraCount
+                              ? `+${getMemberDiscountSummary(trek)?.extraCount} more`
+                              : "Best offer"}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {getMemberDiscountRules(trek).map((rule, index) => (
+                            <span key={`${rule.minMembers}-${index}`} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-amber-700 shadow-sm">
+                              {rule.label?.trim() || `${rule.minMembers}+ members`}:
+                              {" "}
+                              {rule.discountType === "percentage"
+                                ? `${rule.discountValue}% off`
+                                : `₹${rule.discountValue} off/person`}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
                     {/* City Pricing */}
                     {trek.cityPricing && trek.cityPricing.filter(cp => cp.price !== null && cp.price !== undefined).length > 0 && (

@@ -20,6 +20,13 @@ type CityPricing = {
   discountPrice: string;
 };
 
+type MemberDiscountRule = {
+  label: string;
+  minMembers: string;
+  discountType: "percentage" | "perPerson";
+  discountValue: string;
+};
+
 type ItineraryItem = {
   day: string;
   title: string;
@@ -100,6 +107,9 @@ const AddTrek = () => {
   const [cityPricing, setCityPricing] = useState<CityPricing[]>(
     cities.map((city) => ({ city, price: "", discountPrice: "" }))
   );
+  const [memberDiscountRules, setMemberDiscountRules] = useState<MemberDiscountRule[]>([
+    { label: "", minMembers: "", discountType: "percentage", discountValue: "" },
+  ]);
   const [itinerary, setItinerary] = useState<ItineraryItem[]>([
     { day: "1", title: "", description: "", meals: "", accommodation: "" },
   ]);
@@ -118,6 +128,7 @@ const AddTrek = () => {
   const navigate = useNavigate();
 
   const descriptionModules = useMemo(() => quillModules, []);
+  const itineraryModules = useMemo(() => quillModules, []);
 
   const handlePricingChange = (
     index: number,
@@ -127,6 +138,16 @@ const AddTrek = () => {
     const updated = [...cityPricing];
     updated[index] = { ...updated[index], [field]: value };
     setCityPricing(updated);
+  };
+
+  const handleMemberDiscountChange = (
+    index: number,
+    field: keyof MemberDiscountRule,
+    value: string
+  ) => {
+    const updated = [...memberDiscountRules];
+    updated[index] = { ...updated[index], [field]: value };
+    setMemberDiscountRules(updated);
   };
 
   const handleItineraryChange = (
@@ -196,6 +217,18 @@ const AddTrek = () => {
       return;
     }
 
+    const sanitizedMemberDiscountRules = memberDiscountRules
+      .map((rule) => ({
+        label: rule.label.trim(),
+        minMembers: parseInt(rule.minMembers) || 0,
+        discountType: rule.discountType,
+        discountValue: parseFloat(rule.discountValue) || 0,
+      }))
+      .filter((rule) => rule.minMembers > 0 && rule.discountValue > 0)
+      .filter((rule, index, array) => array.findIndex((item) => item.minMembers === rule.minMembers) === index)
+      .sort((left, right) => left.minMembers - right.minMembers)
+      ;
+
     try {
       const fd = new FormData();
       fd.append("name", form.name);
@@ -209,6 +242,7 @@ const AddTrek = () => {
       fd.append("endDate", validDateWindows[validDateWindows.length - 1].endDate);
       fd.append("highlights", JSON.stringify(form.highlights.filter(h => h.trim())));
       fd.append("cityPricing", JSON.stringify(cityPricing));
+      fd.append("memberDiscountRules", JSON.stringify(sanitizedMemberDiscountRules));
       fd.append("dateWindows", JSON.stringify(validDateWindows));
       fd.append("itinerary", JSON.stringify(itinerary));
       fd.append("thingsToCarry", JSON.stringify(thingsToCarry));
@@ -694,13 +728,17 @@ const AddTrek = () => {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         required
                       />
-                      <textarea
-                        placeholder="Day description"
-                        value={day.description}
-                        onChange={(event) => handleItineraryChange(index, "description", event.target.value)}
-                        className="w-full md:col-span-2 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-28"
-                        required
-                      />
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Day description</label>
+                        <ReactQuill
+                          theme="snow"
+                          value={day.description}
+                          onChange={(value) => handleItineraryChange(index, "description", value)}
+                          modules={itineraryModules}
+                          formats={quillFormats}
+                          className="bg-white rounded-lg"
+                        />
+                      </div>
                       <input
                         type="text"
                         placeholder="Meals included"
@@ -967,6 +1005,84 @@ const AddTrek = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Member Discount Section */}
+            <div className="p-6 sm:p-8 border-b border-gray-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">👥</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Member Discount Rules</h2>
+                  <p className="text-sm text-gray-600 mt-1">Add multiple tiers like 5+ members = 10% off or 10+ members = ₹100 off per person</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {memberDiscountRules.map((rule, index) => (
+                  <div key={index} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="font-medium text-emerald-900">Tier {index + 1}</h3>
+                      {memberDiscountRules.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setMemberDiscountRules((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}
+                          className="text-sm font-medium text-rose-600 hover:text-rose-700"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                      <input
+                        type="text"
+                        placeholder="Label e.g. 5+ members"
+                        value={rule.label}
+                        onChange={(e) => handleMemberDiscountChange(index, "label", e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Min members"
+                        value={rule.minMembers}
+                        onChange={(e) => handleMemberDiscountChange(index, "minMembers", e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                      <select
+                        value={rule.discountType}
+                        onChange={(e) => handleMemberDiscountChange(index, "discountType", e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                      >
+                        <option value="percentage">Percentage off</option>
+                        <option value="perPerson">₹ off per person</option>
+                      </select>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder={rule.discountType === "percentage" ? "10" : "100"}
+                        value={rule.discountValue}
+                        onChange={(e) => handleMemberDiscountChange(index, "discountValue", e.target.value)}
+                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <p className="text-xs text-emerald-700">
+                      Example: {rule.minMembers || "5"}+ members gets {rule.discountValue || "10"}{rule.discountType === "percentage" ? "%" : "₹"} off
+                    </p>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setMemberDiscountRules((prev) => ([...prev, { label: "", minMembers: "", discountType: "percentage", discountValue: "" }]))}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 transition-all duration-200"
+                >
+                  + Add Discount Tier
+                </button>
               </div>
             </div>
 

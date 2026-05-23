@@ -3,7 +3,7 @@ import UserBooking from "../models/UserBooking.js";
 import Razorpay from "razorpay";
 import crypto from "crypto";
 import transporter from "../config/nodemailer.js";
-import { isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
+import { calculateMemberDiscountedPrice, isMatchingDateWindow, normalizeTravelerDetails } from "../utils/bookingHelpers.js";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -39,13 +39,29 @@ const getStartOfToday = () => {
 // Create booking and initiate Razorpay
 export const createBooking = async (req, res) => {
   try {
-    const { name, email, phoneNumber, city, membersCount, trekId, travelerDetails, selectedDateWindow } = req.body;
+    const { name, email, phoneNumber, city, pickupLocation, membersCount, trekId, travelerDetails, selectedDateWindow } = req.body;
     const totalMembers = Number(membersCount);
 
     if (!name || !email || !phoneNumber || !city || !membersCount || !trekId) {
       return res.status(400).json({
         success: false,
         message: "All fields (name, email, phoneNumber, city, membersCount, trekId) are required",
+      });
+    }
+
+    const normalizedPickupLocation = pickupLocation && typeof pickupLocation === "object"
+      ? {
+          city: String(pickupLocation.city ?? "").trim(),
+          location: String(pickupLocation.location ?? "").trim(),
+          pickupTime: String(pickupLocation.pickupTime ?? "").trim(),
+          notes: String(pickupLocation.notes ?? "").trim(),
+        }
+      : null;
+
+    if (!normalizedPickupLocation?.city || !normalizedPickupLocation?.location || !normalizedPickupLocation?.pickupTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Pickup location is required",
       });
     }
 
@@ -79,6 +95,21 @@ export const createBooking = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Trek not found",
+      });
+    }
+
+    const matchingPickupLocation = trek.pickupLocations?.find(
+      (location) =>
+        location.city.toLowerCase() === normalizedPickupLocation.city.toLowerCase() &&
+        location.location === normalizedPickupLocation.location &&
+        location.pickupTime === normalizedPickupLocation.pickupTime
+    );
+
+    if (!matchingPickupLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected pickup location is not available",
+        availablePickupLocations: trek.pickupLocations || [],
       });
     }
 
@@ -127,11 +158,12 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const pricePerMember =
-      cityPriceObj.discountPrice > 0
-        ? cityPriceObj.discountPrice
-        : cityPriceObj.price;
-    const finalPrice = pricePerMember * totalMembers;
+      const pricingResult = calculateMemberDiscountedPrice(
+        cityPriceObj.discountPrice > 0 ? cityPriceObj.discountPrice : cityPriceObj.price,
+        totalMembers,
+        trek.memberDiscountRules || []
+      );
+      const finalPrice = pricingResult.finalPrice;
 
     if (finalPrice <= 0) {
       return res.status(400).json({
@@ -159,6 +191,7 @@ export const createBooking = async (req, res) => {
       email, // ✅ new field
       phoneNumber,
       city,
+          pickupLocation: matchingPickupLocation,
       membersCount: totalMembers,
       travelerDetails: normalizedTravelerDetails,
       selectedDateWindow: chosenDateWindow,
