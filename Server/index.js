@@ -22,6 +22,7 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173", // local frontend
   "https://infinitytrekkersindia.com" ,
+  "https://www.infinitytrekkersindia.com"
   "https://infinity-trekkers-r81t-admin.vercel.app"
 ];
 
