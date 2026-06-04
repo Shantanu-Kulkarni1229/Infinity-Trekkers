@@ -188,14 +188,30 @@ const OfflineBooking: React.FC = () => {
     setSubmitting(true);
     
     try {
+      const adminKey = localStorage.getItem("adminKey") || "";
+
+      if (!adminKey) {
+        toast.error("Admin not authenticated. Please login before creating offline bookings.");
+        setSubmitting(false);
+        return;
+      }
+
+      // Build travelerDetails array: if admin didn't provide passenger breakdown,
+      // default to repeating the main customer details for each member.
+      const travelerDetails = Array.from({ length: Number(formData.membersCount) }, () => ({
+        name: formData.name,
+        phoneNumber: formData.phoneNumber,
+      }));
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/offline-booking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-key": localStorage.getItem("adminKey") || "",
+          "x-admin-key": adminKey,
         },
         body: JSON.stringify({
           ...formData,
+          travelerDetails,
           ...(formData.bookingType === "trek" && { trekId: formData.trekId }),
           ...(formData.bookingType === "tour" && { tourId: formData.tourId })
         }),
