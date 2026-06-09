@@ -197,6 +197,7 @@ export const createBooking = async (req, res) => {
       selectedDateWindow: chosenDateWindow,
       trek: trek._id,
       finalPrice,
+        paymentMode: "online",
       razorpayOrderId: order.id,
       paymentStatus: "pending",
     });
@@ -267,6 +268,7 @@ export const verifyPayment = async (req, res) => {
       bookingId,
       {
         paymentStatus: "paid",
+        paymentMode: "online",
         razorpayPaymentId,
         razorpaySignature
       },

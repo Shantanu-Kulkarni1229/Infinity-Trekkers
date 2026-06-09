@@ -94,6 +94,17 @@ const getApplicableMemberDiscountRule = (
     .sort((left, right) => Number(right.minMembers) - Number(left.minMembers))[0] || null;
 };
 
+const formatDateDDMMYYYY = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const isPrimarySchedule = (window: DateWindow) => (window.label || "").trim().toLowerCase() === "primary schedule";
+
 const BookTrek = () => {
   const { trekId } = useParams<{ trekId: string }>();
   const [trek, setTrek] = useState<Trek | null>(null);
@@ -160,15 +171,17 @@ const BookTrek = () => {
 
           const fallbackWindows = trekData.dateWindows && trekData.dateWindows.length > 0
             ? trekData.dateWindows
-            : [{ label: "Primary Schedule", startDate: trekData.startDate, endDate: trekData.endDate }];
+            : [];
 
           const todayStart = getStartOfToday();
-          const futureWindows = fallbackWindows.filter((window) => new Date(window.endDate) >= todayStart);
+          const futureWindows = fallbackWindows.filter(
+            (window) => !isPrimarySchedule(window) && new Date(window.endDate) >= todayStart
+          );
           setAvailableDateWindows(futureWindows);
           setSelectedDateWindowIndex(futureWindows.length > 0 ? "0" : "");
 
           if (futureWindows.length === 0) {
-            setError("No future booking dates are available for this trek.");
+            setError("No future booking batches are available for this trek.");
           } else {
             setError("");
           }
@@ -585,11 +598,11 @@ const BookTrek = () => {
                   </div>
                   <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">Start</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(trek.startDate).toLocaleDateString()}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateDDMMYYYY(trek.startDate)}</p>
                   </div>
                   <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-sky-500">End</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-900">{new Date(trek.endDate).toLocaleDateString()}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900">{formatDateDDMMYYYY(trek.endDate)}</p>
                   </div>
                 </div>
 
@@ -904,6 +917,13 @@ const BookTrek = () => {
                   {/* Date Window Selection */}
                   {availableDateWindows.length > 0 && (
                     <>
+                      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 mb-4">
+                        <p className="text-sm font-semibold text-sky-900">Primary Schedule</p>
+                        <p className="mt-1 text-sm text-sky-800">
+                          {formatDateDDMMYYYY(trek?.startDate || "")} to {formatDateDDMMYYYY(trek?.endDate || "")}
+                        </p>
+                        <p className="mt-1 text-xs text-sky-700">This is only for reference. Select one of the available batches below.</p>
+                      </div>
                       <div className="group">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Travel Date</label>
                         <div className="relative">
@@ -917,7 +937,7 @@ const BookTrek = () => {
                             {availableDateWindows.map((window, index) => (
                               <option key={`${window.startDate}-${window.endDate}-${index}`} value={index}>
                                 {(window.label?.trim() ? window.label : `Batch ${index + 1}`) + " - "}
-                                {new Date(window.startDate).toLocaleDateString()} to {new Date(window.endDate).toLocaleDateString()}
+                                {formatDateDDMMYYYY(window.startDate)} to {formatDateDDMMYYYY(window.endDate)}
                               </option>
                             ))}
                           </select>

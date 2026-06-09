@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 const travelerSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    phoneNumber: { type: String, required: true, trim: true },
+    name: { type: String, default: "", trim: true },
+    phoneNumber: { type: String, default: "", trim: true },
   },
   { _id: false }
 );
@@ -59,6 +59,13 @@ const userBookingSchema = new mongoose.Schema(
       ref: "Tour"
     },
     finalPrice: { type: Number, required: true },
+    advancePaidAmount: { type: Number, default: 0 },
+    remainingAmount: { type: Number, default: 0 },
+    paymentMode: {
+      type: String,
+      enum: ["cash", "online"],
+      default: "online"
+    },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed"],

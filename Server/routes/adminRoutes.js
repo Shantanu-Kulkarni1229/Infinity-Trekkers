@@ -5,9 +5,12 @@ import { getUsersByTrek,
   createOfflineBooking,
   getUsersByTour,
   getAllBookings,
+  deleteBookingById,
   clearPastTourBookings,
   getToursOverview,
-  getUnifiedOverview } from "../controller/adminController.js";
+  getUnifiedOverview,
+  updateBookingPaymentStatus,
+  downloadBatchBookingsPdf } from "../controller/adminController.js";
 import adminAuth from "../middlewares/adminAuth.js";
 
 
@@ -16,6 +19,9 @@ const router = express.Router();
 router.get("/trek-users/:trekId", getUsersByTrek);
 router.get("/tour-users/:tourId", getUsersByTour);
 router.get("/all-bookings", getAllBookings);
+router.delete("/bookings/:bookingId", adminAuth, deleteBookingById);
+router.patch("/bookings/:bookingId/status", adminAuth, updateBookingPaymentStatus);
+router.get("/bookings/:itemType/:itemId/batch-report", adminAuth, downloadBatchBookingsPdf);
 router.delete("/clear-bookings/:trekId", clearPastTrekBookings);
 router.delete("/clear-tour-bookings/:tourId", clearPastTourBookings);
 router.get("/treks-overview", getTreksOverview);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -10,9 +10,19 @@ interface Item {
     price: number;
     discountPrice: number;
   }[];
+  dateWindows?: {
+    label?: string;
+    startDate: string;
+    endDate: string;
+  }[];
   startDate: string;
   endDate: string;
   isActive: boolean;
+}
+
+interface MemberDetail {
+  name: string;
+  phoneNumber: string;
 }
 
 interface OfflineBookingForm {
@@ -24,7 +34,20 @@ interface OfflineBookingForm {
   trekId: string;
   tourId: string;
   bookingType: "trek" | "tour";
+  advancePaidAmount: number;
+  selectedDateWindow: string;
 }
+
+const formatDateDDMMYYYY = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+const isPrimarySchedule = (window?: { label?: string }) => (window?.label || "").trim().toLowerCase() === "primary schedule";
 
 const OfflineBooking: React.FC = () => {
   const [treks, setTreks] = useState<Item[]>([]);
@@ -32,6 +55,7 @@ const OfflineBooking: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [memberDetails, setMemberDetails] = useState<MemberDetail[]>([]);
   
   const [formData, setFormData] = useState<OfflineBookingForm>({
     name: "",
@@ -42,9 +66,22 @@ const OfflineBooking: React.FC = () => {
     trekId: "",
     tourId: "",
     bookingType: "trek",
+    advancePaidAmount: 0,
+    selectedDateWindow: "",
   });
 
   const [calculatedPrice, setCalculatedPrice] = useState(0);
+
+  const selectedDateWindows = useMemo(() => {
+    if (!selectedItem) return [];
+    return (selectedItem.dateWindows?.length
+      ? selectedItem.dateWindows
+      : [{ label: "Primary Schedule", startDate: selectedItem.startDate, endDate: selectedItem.endDate }]
+    ).filter((window) => !isPrimarySchedule(window));
+  }, [selectedItem]);
+
+  const buildEmptyMembers = (count: number): MemberDetail[] =>
+    Array.from({ length: Math.max(0, count) }, () => ({ name: "", phoneNumber: "" }));
 
   // Fetch active items
   useEffect(() => {
@@ -66,6 +103,24 @@ const OfflineBooking: React.FC = () => {
       }
     }
   }, [selectedItem, formData.city, formData.membersCount]);
+
+  useEffect(() => {
+    setMemberDetails((current) => {
+      const normalized = current.slice(0, formData.membersCount);
+      while (normalized.length < formData.membersCount) {
+        normalized.push({ name: "", phoneNumber: "" });
+      }
+      return normalized;
+    });
+
+    if (selectedDateWindows.length > 0 && !formData.selectedDateWindow) {
+      const firstWindow = selectedDateWindows[0];
+      setFormData((prev) => ({
+        ...prev,
+        selectedDateWindow: JSON.stringify(firstWindow),
+      }));
+    }
+  }, [formData.membersCount, formData.selectedDateWindow, selectedDateWindows]);
 
   const fetchTreks = async () => {
     setLoading(true);
@@ -115,19 +170,27 @@ const OfflineBooking: React.FC = () => {
         [name]: value as "trek" | "tour", 
         trekId: "", 
         tourId: "", 
-        city: "" 
+        city: "",
+        selectedDateWindow: "",
+        advancePaidAmount: 0,
       }));
       setSelectedItem(null);
+      setMemberDetails([]);
     } else if (name === "trekId") {
       const trek = treks.find(t => t._id === value);
       setSelectedItem(trek || null);
-      setFormData(prev => ({ ...prev, [name]: value, tourId: "", city: "" })); // Reset city when trek changes
+      setFormData(prev => ({ ...prev, [name]: value, tourId: "", city: "", selectedDateWindow: "", advancePaidAmount: 0 }));
+      setMemberDetails(buildEmptyMembers(formData.membersCount));
     } else if (name === "tourId") {
       const tour = tours.find(t => t._id === value);
       setSelectedItem(tour || null);
-      setFormData(prev => ({ ...prev, [name]: value, trekId: "", city: "" })); // Reset city when tour changes
+      setFormData(prev => ({ ...prev, [name]: value, trekId: "", city: "", selectedDateWindow: "", advancePaidAmount: 0 }));
+      setMemberDetails(buildEmptyMembers(formData.membersCount));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData(prev => ({
+        ...prev,
+        [name]: name === "membersCount" ? Number(value) : value,
+      }));
     }
   };
 
@@ -166,6 +229,11 @@ const OfflineBooking: React.FC = () => {
       toast.error("Please select a tour");
       return false;
     }
+
+    if (!formData.selectedDateWindow) {
+      toast.error("Please select a batch/date window");
+      return false;
+    }
     
     if (!formData.city) {
       toast.error("Please select a city");
@@ -174,6 +242,16 @@ const OfflineBooking: React.FC = () => {
     
     if (formData.membersCount < 1 || formData.membersCount > 20) {
       toast.error("Members count must be between 1 and 20");
+      return false;
+    }
+
+    if (formData.advancePaidAmount < 0) {
+      toast.error("Advance amount cannot be negative");
+      return false;
+    }
+
+    if (formData.advancePaidAmount > calculatedPrice) {
+      toast.error("Advance amount cannot be greater than the total amount");
       return false;
     }
     
@@ -197,11 +275,7 @@ const OfflineBooking: React.FC = () => {
       }
 
       // Build travelerDetails array: if admin didn't provide passenger breakdown,
-      // default to repeating the main customer details for each member.
-      const travelerDetails = Array.from({ length: Number(formData.membersCount) }, () => ({
-        name: formData.name,
-        phoneNumber: formData.phoneNumber,
-      }));
+      const travelerDetails = memberDetails;
 
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/admin/offline-booking`, {
         method: "POST",
@@ -212,6 +286,7 @@ const OfflineBooking: React.FC = () => {
         body: JSON.stringify({
           ...formData,
           travelerDetails,
+          selectedDateWindow: formData.selectedDateWindow ? JSON.parse(formData.selectedDateWindow) : null,
           ...(formData.bookingType === "trek" && { trekId: formData.trekId }),
           ...(formData.bookingType === "tour" && { tourId: formData.tourId })
         }),
@@ -220,10 +295,13 @@ const OfflineBooking: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
-        toast.success(`Offline booking created successfully! Customer: ${data.data.customerName} - ₹${data.data.amount}`, {
+        toast.success(
+          `Offline booking created successfully! Advance: ₹${data.data.advancePaidAmount || 0}, Remaining: ₹${data.data.remainingAmount || 0}`,
+          {
           position: "top-center",
           autoClose: 5000,
-        });
+          }
+        );
         
         // Reset form
         setFormData({
@@ -235,9 +313,12 @@ const OfflineBooking: React.FC = () => {
           trekId: "",
           tourId: "",
           bookingType: "trek",
+          advancePaidAmount: 0,
+          selectedDateWindow: "",
         });
         setSelectedItem(null);
         setCalculatedPrice(0);
+        setMemberDetails([]);
       } else {
         toast.error(data.message || "Failed to create booking", {
           position: "top-center",
@@ -382,7 +463,7 @@ const OfflineBooking: React.FC = () => {
                   <option value="">Choose a trek...</option>
                   {treks.map((trek) => (
                     <option key={trek._id} value={trek._id}>
-                      {trek.name} ({new Date(trek.startDate).toLocaleDateString()} - {new Date(trek.endDate).toLocaleDateString()})
+                        {trek.name} ({formatDateDDMMYYYY(trek.startDate)} - {formatDateDDMMYYYY(trek.endDate)})
                     </option>
                   ))}
                 </select>
@@ -397,7 +478,7 @@ const OfflineBooking: React.FC = () => {
                   <option value="">Choose a tour...</option>
                   {tours.map((tour) => (
                     <option key={tour._id} value={tour._id}>
-                      {tour.name} ({new Date(tour.startDate).toLocaleDateString()} - {new Date(tour.endDate).toLocaleDateString()})
+                        {tour.name} ({formatDateDDMMYYYY(tour.startDate)} - {formatDateDDMMYYYY(tour.endDate)})
                     </option>
                   ))}
                 </select>
@@ -426,6 +507,114 @@ const OfflineBooking: React.FC = () => {
                 </select>
               </div>
             )}
+
+            {selectedItem && (
+              <div className="md:col-span-2 rounded-lg border border-sky-200 bg-sky-50 p-4">
+                <p className="text-sm font-semibold text-sky-800">Primary Schedule</p>
+                <p className="mt-1 text-sm text-sky-900">
+                  {formatDateDDMMYYYY(selectedItem.startDate)} to {formatDateDDMMYYYY(selectedItem.endDate)}
+                </p>
+                <p className="mt-1 text-xs text-sky-700">This schedule is informational only. Choose a batch/date window below.</p>
+              </div>
+            )}
+
+            {selectedItem && selectedDateWindows.length > 0 && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Select Batch / Date Window *
+                </label>
+                <select
+                  name="selectedDateWindow"
+                  value={formData.selectedDateWindow}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  required
+                >
+                  <option value="">Choose a batch...</option>
+                  {selectedDateWindows.map((window) => (
+                    <option key={`${window.label || "batch"}-${window.startDate}-${window.endDate}`} value={JSON.stringify(window)}>
+                      {(window.label || "Batch").trim()} ({formatDateDDMMYYYY(window.startDate)} - {formatDateDDMMYYYY(window.endDate)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Advance Amount Received *
+                </label>
+                <input
+                  type="number"
+                  name="advancePaidAmount"
+                  min="0"
+                  max={calculatedPrice || undefined}
+                  value={formData.advancePaidAmount}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                  placeholder="0"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Leave 0 if no advance was collected. Remaining amount will be calculated automatically.
+                </p>
+              </div>
+
+              <div className="bg-sky-50 border border-sky-200 rounded-lg p-4">
+                <p className="text-sm font-semibold text-sky-800 mb-2">Payment Snapshot</p>
+                <div className="space-y-1 text-sm text-sky-900">
+                  <p>Total Amount: ₹{calculatedPrice.toLocaleString()}</p>
+                  <p>Advance Received: ₹{Number(formData.advancePaidAmount || 0).toLocaleString()}</p>
+                  <p>Remaining Amount: ₹{Math.max(calculatedPrice - Number(formData.advancePaidAmount || 0), 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Member Details (Optional)
+                </label>
+                <span className="text-xs text-gray-500">
+                  Add name and mobile number if available for each member
+                </span>
+              </div>
+              <div className="space-y-4">
+                {memberDetails.map((member, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Member {index + 1} Name</label>
+                      <input
+                        type="text"
+                        value={member.name}
+                        onChange={(event) => {
+                          const updated = [...memberDetails];
+                          updated[index] = { ...updated[index], name: event.target.value };
+                          setMemberDetails(updated);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-2">Member {index + 1} Mobile Number</label>
+                      <input
+                        type="tel"
+                        value={member.phoneNumber}
+                        onChange={(event) => {
+                          const updated = [...memberDetails];
+                          updated[index] = { ...updated[index], phoneNumber: event.target.value };
+                          setMemberDetails(updated);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="Optional"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Price Calculation */}

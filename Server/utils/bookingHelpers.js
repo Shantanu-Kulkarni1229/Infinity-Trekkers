@@ -109,6 +109,19 @@ export const normalizeTravelerDetails = (value, membersCount) => {
   return travelers;
 };
 
+export const normalizeOptionalTravelerDetails = (value, membersCount) => {
+  const travelers = parseJsonMaybe(value, []);
+  const totalMembers = Number(membersCount || 0);
+
+  return Array.from({ length: totalMembers }, (_, index) => {
+    const traveler = travelers[index] || {};
+    return {
+      name: String(traveler.name ?? "").trim(),
+      phoneNumber: String(traveler.phoneNumber ?? traveler.phone ?? "").trim(),
+    };
+  });
+};
+
 export const resolveMemberDiscountRule = (memberDiscountRules, membersCount) => {
   const rules = Array.isArray(memberDiscountRules) ? memberDiscountRules : [];
   const eligibleRules = rules
